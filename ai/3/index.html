@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tridecco AI Demo</title>
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* --- CSS Variables for Theming --- */
+    :root {
+      --bg-main: #f8f9fa;
+      --bg-canvas-container: #ffffff;
+      --bg-info-panel: #f1f3f5;
+      --bg-card: #ffffff;
+      --text-primary: #212529;
+      --text-secondary: #495057;
+      --text-muted: #6c757d;
+      /* Added for stats labels */
+      --border-color: #dee2e6;
+      --border-dashed-color: #ced4da;
+      /* Added for dashed border */
+      --shadow-color: rgba(0, 0, 0, 0.05);
+      --accent-color-human: #007bff;
+      --accent-color-ai: #dc3545;
+      --accent-color-gameover: #dc3545;
+      --accent-color-button: #28a745;
+      --accent-color-button-hover: #218838;
+      --font-family-main: 'Poppins', sans-serif;
+    }
+
+    /* --- Basic Reset & Body --- */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      height: 100%;
+    }
+
+    body {
+      height: 100%;
+      display: flex;
+      font-family: var(--font-family-main);
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    /* --- Main Layout --- */
+    .main-container {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .square-container {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 70%;
+      max-width: calc(100vh - 40px);
+      height: 100%;
+      padding: 20px;
+      background-color: var(--bg-canvas-container);
+    }
+
+    #canvas-container {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      max-height: 100%;
+      position: relative;
+    }
+
+
+    .remaining-space {
+      flex: 1;
+      background-color: var(--bg-info-panel);
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      border-left: 1px solid var(--border-color);
+    }
+
+    /* --- Info Panel General Styles --- */
+    #game-info-panel h2 {
+      font-weight: 600;
+      margin-bottom: 25px;
+      color: var(--text-primary);
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 15px;
+    }
+
+    /* --- Info Card Styling --- */
+    .info-card {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px var(--shadow-color);
+      border: 1px solid var(--border-color);
+    }
+
+    .info-card h3,
+    .info-card h4 {
+      font-weight: 500;
+      margin-bottom: 15px;
+      color: var(--text-primary);
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+
+    .info-card h4 {
+      font-size: 1.1em;
+      margin-bottom: 12px;
+    }
+
+
+    .info-card p {
+      margin-bottom: 10px;
+      color: var(--text-secondary);
+      font-size: 0.95em;
+    }
+
+    .info-card p strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* Specific card adjustments */
+    #player-status #human-status,
+    #player-status #ai-status {
+      margin-bottom: 15px;
+      padding-left: 10px;
+      border-left: 3px solid var(--border-color);
+    }
+
+    #player-status #human-status p,
+    #player-status #ai-status p {
+      margin-bottom: 5px;
+    }
+
+    #player-status h5 {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      font-size: 1em;
+    }
+
+
+    #turn-info h3 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    #current-player {
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 15px;
+      color: white;
+      font-size: 0.9em;
+      transition: background-color 0.3s ease;
+    }
+
+    #current-player.human-turn {
+      background-color: var(--accent-color-human);
+    }
+
+    #current-player.ai-turn {
+      background-color: var(--accent-color-ai);
+    }
+
+    #current-player.waiting {
+      background-color: var(--text-secondary);
+    }
+
+
+    /* --- Color Swatches --- */
+    .color-pair span {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      margin-right: 4px;
+      border: 1px solid #ccc;
+      vertical-align: middle;
+      border-radius: 4px;
+    }
+
+    #human-selected-piece .color-pair span {
+      margin-left: 6px;
+    }
+
+    .color-info-text {
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      margin-left: 5px;
+    }
+
+    /* --- Last Move & AI Stats --- */
+    #last-move-info #last-move-text {
+      min-height: 40px;
+      /* Ensure space even for short messages */
+    }
+
+    #ai-thinking-stats {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px dashed var(--border-dashed-color);
+    }
+
+    #ai-thinking-stats h4 {
+      font-size: 1em;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: none;
+      /* Remove default border */
+    }
+
+    #ai-thinking-stats p {
+      font-size: 0.9em;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    #ai-thinking-stats p span {
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-left: 5px;
+    }
+
+
+    /* --- Game Over & Restart --- */
+    #game-over-info {
+      margin-top: 25px;
+      padding: 25px;
+      background-color: #fff3f3;
+      border: 1px solid var(--accent-color-gameover);
+      text-align: center;
+      border-radius: 8px;
+    }
+
+    #game-over-message {
+      color: var(--accent-color-gameover);
+      font-weight: 600;
+      font-size: 1.2em;
+      margin-bottom: 20px;
+    }
+
+    #restart-button {
+      padding: 12px 25px;
+      font-size: 1em;
+      font-weight: 500;
+      cursor: pointer;
+      background-color: var(--accent-color-button);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    #restart-button:hover {
+      background-color: var(--accent-color-button-hover);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    /* --- Responsive Adjustments --- */
+    @media (max-width: 992px) {
+      .main-container {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+      }
+
+      .square-container {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        height: auto;
+        padding: 15px;
+        max-height: none;
+      }
+
+      .remaining-space {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        padding: 20px;
+        max-height: 50vh;
+        overflow-y: auto;
+      }
+
+      #game-info-panel h2 {
+        font-size: 1.3em;
+        margin-bottom: 20px;
+      }
+
+      .info-card {
+        padding: 15px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      body {
+        font-size: 14px;
+      }
+
+      .remaining-space {
+        padding: 15px;
+      }
+
+      #game-info-panel h2 {
+        font-size: 1.2em;
+      }
+
+      #ai-thinking-stats p {
+        font-size: 0.85em;
+      }
+    }
+  </style>
+  <script src="/ai/tridecco-board.min.js"></script>
+</head>
+
+<body>
+  <div class="main-container">
+    <div class="square-container">
+      <div id="canvas-container">
+        <!-- Canvas will be rendered here by Tridecco -->
+      </div>
+    </div>
+    <div class="remaining-space" id="game-info-panel">
+      <h2>Game Information</h2>
+
+      <div id="color-info" class="info-card">
+        <h4>Player Colors</h4>
+        <p><strong>AI Colors:</strong> <span id="ai-colors-display">Not assigned</span></p>
+        <p><strong>Your Colors:</strong> <span id="human-colors-display">Not assigned</span></p>
+      </div>
+
+      <div id="turn-info" class="info-card">
+        <h3>Current Turn: <span id="current-player" class="waiting">Waiting...</span></h3>
+      </div>
+
+      <div id="player-status" class="info-card">
+        <h4>Player Status</h4>
+        <div id="human-status">
+          <h5>You (Human)</h5>
+          <p>Selected: <strong id="human-selected-piece">None</strong></p>
+          <p>Pieces Left: <span id="human-piece-counts">? | ?</span></p>
+        </div>
+        <div id="ai-status">
+          <h5>Computer (AI)</h5>
+          <p>Pieces Left: <span id="ai-piece-counts">? | ?</span></p>
+        </div>
+      </div>
+
+      <div id="last-move-info" class="info-card">
+        <h4>Last Move</h4>
+        <p id="last-move-text">Game starting...</p>
+        <!-- AI Thinking Stats Section -->
+        <div id="ai-thinking-stats" style="display: none;">
+          <h4>AI Analysis</h4>
+          <p>Time: <span id="ai-time">N/A</span></p>
+          <p>Depth: <span id="ai-depth">N/A</span></p>
+          <p>Nodes: <span id="ai-nodes">N/A</span></p>
+        </div>
+        <!-- End AI Thinking Stats Section -->
+      </div>
+
+      <div id="game-over-info" style="display: none;">
+        <h3 id="game-over-message"></h3>
+        <button id="restart-button">Restart Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CanvasContainer = document.getElementById('canvas-container');
+
+    window.addEventListener("load", () => {
+      const PIECES_COUNT_PER_PLAYER_PER_COLOR = 9;
+      const MINIMAX_DEPTH = 3; // AI Search Depth
+
+      const {
+        Board,
+        Piece,
+        Renderer
+      } = Tridecco;
+
+      class Game {
+        constructor() {
+          this.board = new Board();
+          this.aiPieces = [
+            [],
+            []
+          ];
+          this.humanPieces = [
+            [],
+            []
+          ];
+          this.aiColors = [];
+          this.humanColors = [];
+          this.currentPieceIndex = 0;
+          this.currentTurn = 0; // 0: Human, 1: AI
+          this.isGameOver = false;
+          this.nodesExplored = 0; // Counter for minimax nodes
+
+          this.ui = {
+            currentPlayer: document.getElementById('current-player'),
+            humanSelectedPiece: document.getElementById('human-selected-piece'),
+            humanPieceCounts: document.getElementById('human-piece-counts'),
+            aiPieceCounts: document.getElementById('ai-piece-counts'),
+            lastMoveText: document.getElementById('last-move-text'),
+            gameOverInfo: document.getElementById('game-over-info'),
+            gameOverMessage: document.getElementById('game-over-message'),
+            restartButton: document.getElementById('restart-button'),
+            aiColorsDisplay: document.getElementById('ai-colors-display'),
+            humanColorsDisplay: document.getElementById('human-colors-display'),
+            gameInfoPanel: document.getElementById('game-info-panel'),
+            // AI Stats UI elements
+            aiStatsContainer: document.getElementById('ai-thinking-stats'),
+            aiTime: document.getElementById('ai-time'),
+            aiDepth: document.getElementById('ai-depth'),
+            aiNodes: document.getElementById('ai-nodes')
+          };
+
+          // --- Core Game Logic Methods (nextTurn, thisTurn, checkGameOver) ---
+          this.nextTurn = () => {
+            if (this.checkGameOver()) return;
+            this.currentTurn = (this.currentTurn + 1) % 2;
+            this.updateTurnIndicatorUI();
+            if (this.renderer) {
+              this.currentTurn ? this.aiTurn() : this.humanTurn();
+            } else {
+              console.error("Renderer not ready for next turn.");
+            }
+          };
+
+          this.thisTurn = () => {
+            if (this.checkGameOver()) return;
+            // UI update for extra turn happens within updateLastMoveUI
+            if (this.renderer) {
+              this.currentTurn ? this.aiTurn() : this.humanTurn();
+            } else {
+              console.error("Renderer not ready for extra turn.");
+            }
+          };
+
+          this.checkGameOver = () => {
+            if (this.isGameOver) return true;
+            const humanPiecesLeft = this.humanPieces[0].length + this.humanPieces[1].length;
+            const aiPiecesLeft = this.aiPieces[0].length + this.aiPieces[1].length;
+            let availablePositions = this.board.getAvailablePositions();
+            const emptyPositions = this.board.getEmptyPositions();
+            if (this.board.getOccupiedPositions().length === 0 && emptyPositions.length > 0) {
+              availablePositions = emptyPositions;
+            }
+            let humanCanMove = humanPiecesLeft > 0 && availablePositions.length > 0;
+            let aiCanMove = aiPiecesLeft > 0 && availablePositions.length > 0;
+            if (this.board.getOccupiedPositions().length === 0 && emptyPositions.length > 0) {
+              humanCanMove = humanPiecesLeft > 0;
+              aiCanMove = aiPiecesLeft > 0;
+            }
+            let gameOverReason = null;
+            if (aiPiecesLeft === 0 && humanPiecesLeft > 0) gameOverReason = "GAME OVER! AI Wins! (AI used all pieces)";
+            else if (humanPiecesLeft === 0 && aiPiecesLeft > 0) gameOverReason = "GAME OVER! You Win! (You used all pieces)";
+            else if (aiPiecesLeft === 0 && humanPiecesLeft === 0) gameOverReason = "GAME OVER! Draw! (Both players finished)";
+            else if (this.currentTurn === 0 && !humanCanMove) gameOverReason = "GAME OVER! AI Wins! (You cannot move)";
+            else if (this.currentTurn === 1 && !aiCanMove) gameOverReason = "GAME OVER! You Win! (AI cannot move)";
+            else if (emptyPositions.length === 0 && availablePositions.length === 0) gameOverReason = "GAME OVER! Draw! (Board Full, No Moves)";
+
+            if (gameOverReason) {
+              console.log("Game Over Check:", gameOverReason);
+              this.isGameOver = true;
+              if (this.renderer) {
+                this.renderer.clearAvailablePositions();
+                this.renderer.clearPreview();
+              }
+              this.showGameOverUI(gameOverReason);
+              document.removeEventListener("keydown", window.currentGameKeyDownListener);
+              window.currentGameKeyDownListener = null;
+              if (this.renderer && window.currentGameClickListener) {
+                this.renderer.removeEventListener("click", window.currentGameClickListener);
+                window.currentGameClickListener = null;
+              }
+              if (this.renderer && window.currentGameMouseMoveListener) {
+                this.renderer.removeEventListener("mousemove", window.currentGameMouseMoveListener);
+                window.currentGameMouseMoveListener = null;
+              }
+              return true;
+            }
+            return false;
+          };
+
+          this.init();
+        }
+
+        // Static method for color assignment
+        static randomColors() {
+          const colorsList = [
+            [
+              ["blue", "white"],
+              ["red", "yellow"],
+            ],
+            [
+              ["white", "red"],
+              ["yellow", "blue"],
+            ],
+          ];
+          return Math.random() < 0.5 ? [colorsList[0], colorsList[1]] : [colorsList[1], colorsList[0]];
+        }
+
+        // Initialization
+        init() {
+          this.renderer = new Renderer({
+              board: this.board,
+              container: CanvasContainer
+            },
+            (rendererInstance, error) => {
+              if (error || !rendererInstance) {
+                console.error("Renderer initialization failed:", error);
+                CanvasContainer.innerHTML = "<p style='color: red; text-align: center; padding: 20px;'>Renderer failed to load.</p>";
+                return;
+              }
+              console.log("Renderer initialized successfully.");
+              this.initPieces();
+              this.play();
+            }
+          );
+        }
+
+        initPieces() {
+          this.aiPieces = [
+            [],
+            []
+          ];
+          this.humanPieces = [
+            [],
+            []
+          ];
+          const assignedColors = Game.randomColors();
+          this.aiColors = assignedColors[0];
+          this.humanColors = assignedColors[1];
+          this.updateColorInfoUI();
+          for (let i = 0; i < PIECES_COUNT_PER_PLAYER_PER_COLOR; i++) {
+            this.aiPieces[0].push(new Piece(this.aiColors[0]));
+            this.aiPieces[1].push(new Piece(this.aiColors[1]));
+            this.humanPieces[0].push(new Piece(this.humanColors[0]));
+            this.humanPieces[1].push(new Piece(this.humanColors[1]));
+          }
+          this.updatePieceCountsUI();
+        }
+
+        // --- UI Update Functions ---
+        createColorSpan(colors) {
+          if (!Array.isArray(colors) || colors.length !== 2) return '';
+          const v1 = CSS.supports('color', colors[0]) ? colors[0] : '#ccc';
+          const v2 = CSS.supports('color', colors[1]) ? colors[1] : '#ccc';
+          return `<span class="color-pair"><span style="background-color: ${v1};"></span><span style="background-color: ${v2};"></span></span> <span class="color-info-text">(${colors[0]}/${colors[1]})</span>`;
+        }
+        updateColorInfoUI() {
+          if (!this.ui.aiColorsDisplay || !this.ui.humanColorsDisplay) return;
+          this.ui.aiColorsDisplay.innerHTML = `${this.createColorSpan(this.aiColors[0])} & ${this.createColorSpan(this.aiColors[1])}`;
+          this.ui.humanColorsDisplay.innerHTML = `${this.createColorSpan(this.humanColors[0])} & ${this.createColorSpan(this.humanColors[1])}`;
+        }
+        updateTurnIndicatorUI() {
+          if (!this.ui.currentPlayer) return;
+          const player = this.currentTurn === 1 ? "AI" : "You";
+          this.ui.currentPlayer.textContent = player;
+          this.ui.currentPlayer.classList.remove('human-turn', 'ai-turn', 'waiting');
+          if (this.isGameOver) {
+            this.ui.currentPlayer.textContent = "Game Over";
+            this.ui.currentPlayer.classList.add('waiting');
+          } else if (this.currentTurn === 0) {
+            this.ui.currentPlayer.classList.add('human-turn');
+          } else {
+            this.ui.currentPlayer.classList.add('ai-turn');
+          }
+        }
+        updatePieceCountsUI() {
+          if (!this.ui.humanPieceCounts || !this.ui.aiPieceCounts) return;
+          const hC0 = this.humanPieces[0]?.length ?? 0;
+          const hC1 = this.humanPieces[1]?.length ?? 0;
+          const aC0 = this.aiPieces[0]?.length ?? 0;
+          const aC1 = this.aiPieces[1]?.length ?? 0;
+          const h0 = this.humanColors[0] ? this.createColorSpan(this.humanColors[0]) : '?';
+          const h1 = this.humanColors[1] ? this.createColorSpan(this.humanColors[1]) : '?';
+          const a0 = this.aiColors[0] ? this.createColorSpan(this.aiColors[0]) : '?';
+          const a1 = this.aiColors[1] ? this.createColorSpan(this.aiColors[1]) : '?';
+          this.ui.humanPieceCounts.innerHTML = `${h0}: ${hC0} | ${h1}: ${hC1}`;
+          this.ui.aiPieceCounts.innerHTML = `${a0}: ${aC0} | ${a1}: ${aC1}`;
+          if (this.currentTurn === 0) {
+            this.updateHumanSelectionUI();
+          } else {
+            this.ui.humanSelectedPiece.innerHTML = 'N/A';
+          }
+        }
+        updateHumanSelectionUI() {
+          if (!this.ui.humanSelectedPiece) return;
+          if (this.currentTurn !== 0) {
+            this.ui.humanSelectedPiece.innerHTML = 'N/A';
+            return;
+          }
+          if (this.humanPieces[0].length + this.humanPieces[1].length === 0) {
+            this.ui.humanSelectedPiece.innerHTML = 'None left';
+            return;
+          }
+          if (this.humanPieces[this.currentPieceIndex] && this.humanPieces[this.currentPieceIndex].length > 0) {
+            const piece = this.humanPieces[this.currentPieceIndex][0];
+            const count = this.humanPieces[this.currentPieceIndex].length;
+            this.ui.humanSelectedPiece.innerHTML = `${this.createColorSpan(piece.colors)} (${count} left)`;
+          } else if (this.humanPieces[(this.currentPieceIndex + 1) % 2] && this.humanPieces[(this.currentPieceIndex + 1) % 2].length > 0) {
+            const otherIdx = (this.currentPieceIndex + 1) % 2;
+            const piece = this.humanPieces[otherIdx][0];
+            const count = this.humanPieces[otherIdx].length;
+            this.ui.humanSelectedPiece.innerHTML = `(Empty - Next: ${this.createColorSpan(piece.colors)} - ${count} left)`;
+          } else {
+            this.ui.humanSelectedPiece.innerHTML = 'None available';
+          }
+        }
+        updateLastMoveUI(player, piece, index, extraTurn) {
+          if (!this.ui.lastMoveText) return;
+          const pieceDisplay = piece && piece.colors ? this.createColorSpan(piece.colors) : '';
+          const positionText = index !== -1 ? `at position ${index}` : '';
+          let message = "";
+          if (player === "System") {
+            message = `System: ${piece}`;
+          } // Pass message string directly
+          else if (player === "Initial") {
+            const name = piece.playerName || (this.currentTurn === 1 ? "AI" : "You");
+            message = `Initial: ${name} placed ${pieceDisplay} ${positionText}.`;
+          } else {
+            const name = player === "AI" ? "AI" : "You";
+            message = `${name} placed ${pieceDisplay} ${positionText}.`;
+          }
+          if (extraTurn) {
+            message += ` <strong style="color: var(--accent-color-button);">Gets an extra turn!</strong>`;
+          }
+          this.ui.lastMoveText.innerHTML = message;
+        }
+        // ** NEW function to update AI stats UI **
+        updateAIStatsUI(time, depth, nodes) {
+          if (!this.ui.aiStatsContainer || !this.ui.aiTime || !this.ui.aiDepth || !this.ui.aiNodes) return;
+          this.ui.aiTime.textContent = `${time}s`;
+          this.ui.aiDepth.textContent = depth;
+          this.ui.aiNodes.textContent = nodes.toLocaleString(); // Format large numbers
+          this.ui.aiStatsContainer.style.display = 'block'; // Show the stats section
+        }
+        // Function to hide AI stats UI
+        hideAIStatsUI() {
+          if (this.ui.aiStatsContainer) {
+            this.ui.aiStatsContainer.style.display = 'none';
+          }
+        }
+        showGameOverUI(reason) {
+          if (!this.ui.gameOverInfo || !this.ui.gameOverMessage || !this.ui.restartButton) return;
+          this.ui.gameOverMessage.textContent = reason;
+          this.ui.gameOverInfo.style.display = 'block';
+          this.updateTurnIndicatorUI(); // Show "Game Over"
+          this.hideAIStatsUI(); // Hide stats on game over
+          const cardsToHide = ['turn-info', 'player-status', 'last-move-info'];
+          cardsToHide.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+              el.style.opacity = '0';
+              el.style.transition = 'opacity 0.5s ease';
+              setTimeout(() => el.style.display = 'none', 500);
+            }
+          });
+          if (!this.ui.restartButton.dataset.listenerAttached) {
+            this.ui.restartButton.addEventListener('click', () => {
+              console.log("Restarting game...");
+              window.location.reload();
+            });
+            this.ui.restartButton.dataset.listenerAttached = 'true';
+          }
+        }
+
+        // --- Game Flow Methods ---
+        play() {
+          console.log("====== GAME STARTED ======");
+          this.isGameOver = false;
+          this.board.clear();
+          this.hideAIStatsUI(); // Hide stats at start
+          if (this.aiPieces[0].length === 0 && this.humanPieces[0].length === 0) {
+            console.warn("Pieces not initialized. Initializing.");
+            this.initPieces();
+            if (this.aiPieces[0].length === 0 && this.humanPieces[0].length === 0) {
+              console.error("Failed to initialize pieces.");
+              this.updateLastMoveUI("System", "Error: Could not initialize pieces.", -1, false);
+              this.isGameOver = true;
+              return;
+            }
+          }
+          this.ui.gameOverInfo.style.display = 'none';
+          const cardsToShow = ['turn-info', 'player-status', 'last-move-info', 'color-info'];
+          cardsToShow.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+              el.style.display = 'block';
+              el.style.opacity = '1';
+            }
+          });
+          this.currentTurn = Math.floor(Math.random() * 2);
+          this.updateTurnIndicatorUI();
+          console.log(this.currentTurn ? "* AI" : "* Human", "starts");
+          this.placeRandomPiece();
+        }
+
+        humanTurn() {
+          if (this.isGameOver) return;
+          this.updateTurnIndicatorUI();
+          this.updateHumanSelectionUI();
+          this.updatePieceCountsUI();
+          let availablePositions = this.board.getAvailablePositions();
+          if (this.board.getOccupiedPositions().length === 0 && this.board.getEmptyPositions().length > 0) availablePositions = this.board.getEmptyPositions();
+          const humanHasPieces = this.humanPieces[0].length > 0 || this.humanPieces[1].length > 0;
+          if (!humanHasPieces || availablePositions.length === 0) {
+            this.updateLastMoveUI("System", "You have no pieces or available moves. Skipping turn.", -1, false);
+            this.nextTurn();
+            return;
+          }
+          if (this.humanPieces[this.currentPieceIndex].length === 0) {
+            if (this.humanPieces[(this.currentPieceIndex + 1) % 2].length > 0) {
+              this.currentPieceIndex = (this.currentPieceIndex + 1) % 2;
+              this.updateHumanSelectionUI();
+              console.log("> Auto-switched human piece type");
+            } else {
+              this.updateLastMoveUI("System", "You have no pieces left of either type.", -1, false);
+              this.checkGameOver();
+              return;
+            }
+          }
+          // --- Listener Setup ---
+          let keyDownListener, clickListener, mouseMoveListener;
+          let lastPreviewIndex = -1;
+          const cleanupListeners = () => {
+            document.removeEventListener("keydown", window.currentGameKeyDownListener);
+            if (this.renderer) {
+              this.renderer.removeEventListener("click", window.currentGameClickListener);
+              this.renderer.removeEventListener("mousemove", window.currentGameMouseMoveListener);
+              this.renderer.clearPreview();
+              this.renderer.clearAvailablePositions();
+            }
+            window.currentGameKeyDownListener = null;
+            window.currentGameClickListener = null;
+            window.currentGameMouseMoveListener = null;
+            lastPreviewIndex = -1;
+          };
+          cleanupListeners();
+          keyDownListener = (event) => {
+            if (this.currentTurn !== 0 || this.isGameOver) return;
+            if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === " ") {
+              event.preventDefault();
+              const otherIdx = (this.currentPieceIndex + 1) % 2;
+              if (this.humanPieces[otherIdx].length > 0) {
+                this.currentPieceIndex = otherIdx;
+                this.updateHumanSelectionUI();
+                if (this.renderer) {
+                  this.renderer.clearPreview();
+                  if (lastPreviewIndex !== -1 && this.humanPieces[this.currentPieceIndex].length > 0) this.renderer.previewPiece(lastPreviewIndex, this.humanPieces[this.currentPieceIndex][0]);
+                }
+                console.log("> Switched human piece type via keypress");
+              } else {
+                console.log("> Cannot switch: other piece type empty.");
+              }
+            }
+          };
+          mouseMoveListener = (index) => {
+            if (this.currentTurn !== 0 || this.isGameOver) return;
+            let currentAvail = this.board.getAvailablePositions();
+            if (this.board.getOccupiedPositions().length === 0) currentAvail = this.board.getEmptyPositions();
+            const pieceStack = this.humanPieces[this.currentPieceIndex];
+            const isValid = index !== -1 && currentAvail.includes(index);
+            if (isValid && pieceStack && pieceStack.length > 0) {
+              if (index !== lastPreviewIndex) {
+                this.renderer.previewPiece(index, pieceStack[0]);
+                lastPreviewIndex = index;
+              }
+            } else {
+              if (lastPreviewIndex !== -1) {
+                this.renderer.clearPreview();
+                lastPreviewIndex = -1;
+              }
+            }
+          };
+          clickListener = (index) => {
+            if (this.currentTurn !== 0 || this.isGameOver) return;
+            let currentAvail = this.board.getAvailablePositions();
+            if (this.board.getOccupiedPositions().length === 0) currentAvail = this.board.getEmptyPositions();
+            if (!currentAvail.includes(index)) {
+              console.log(`Pos ${index} not available.`);
+              if (this.renderer) this.renderer.showAvailablePositions(currentAvail);
+              return;
+            }
+            if (this.humanPieces[this.currentPieceIndex].length === 0) {
+              console.log("Selected piece type empty.");
+              this.updateLastMoveUI("System", "Error: Selected piece type is empty.", -1, false);
+              this.updateHumanSelectionUI();
+              return;
+            }
+            cleanupListeners();
+            const pieceToPlace = this.humanPieces[this.currentPieceIndex].pop();
+            try {
+              const formed = this.board.place(index, pieceToPlace);
+              const extraTurn = formed.length > 0;
+              this.updateLastMoveUI("Human", pieceToPlace, index, extraTurn);
+              this.updatePieceCountsUI();
+              if (this.checkGameOver()) return;
+              if (extraTurn) {
+                this.thisTurn();
+              } else {
+                this.nextTurn();
+              }
+            } catch (e) {
+              console.error(`Human placement error: ${e.message}`);
+              this.updateLastMoveUI("System", `Placement Error: ${e.message}. Try again.`, -1, false);
+              this.humanPieces[this.currentPieceIndex].push(pieceToPlace);
+              this.updatePieceCountsUI();
+              this.humanTurn();
+            }
+          };
+          window.currentGameKeyDownListener = keyDownListener;
+          window.currentGameClickListener = clickListener;
+          window.currentGameMouseMoveListener = mouseMoveListener;
+          if (this.renderer) {
+            this.renderer.showAvailablePositions(availablePositions);
+            this.renderer.addEventListener("mousemove", window.currentGameMouseMoveListener);
+            this.renderer.addEventListener("click", window.currentGameClickListener);
+          }
+          document.addEventListener("keydown", window.currentGameKeyDownListener);
+          console.log("Human turn ready...");
+          this.updateLastMoveUI("System", "Your turn. Click available spot. ↑/↓/Space to switch piece.", -1, false);
+        }
+
+        aiTurn() {
+          if (this.isGameOver) return;
+
+          this.renderer.disconnectFromBoard();
+
+          this.updateTurnIndicatorUI();
+          this.updatePieceCountsUI();
+          this.ui.humanSelectedPiece.innerHTML = 'N/A';
+          let availablePositions = this.board.getAvailablePositions();
+          if (this.board.getOccupiedPositions().length === 0) availablePositions = this.board.getEmptyPositions();
+          const aiHasPieces = this.aiPieces[0].length > 0 || this.aiPieces[1].length > 0;
+          if (!aiHasPieces || availablePositions.length === 0) {
+            this.updateLastMoveUI("System", "AI has no pieces or available moves. Skipping turn.", -1, false);
+            this.hideAIStatsUI();
+            this.nextTurn();
+            return;
+          }
+
+          this.updateLastMoveUI("System", "AI is thinking...", -1, false);
+
+          setTimeout(() => {
+            if (this.isGameOver) return;
+
+            const startTime = performance.now(); // Start timer
+            this.nodesExplored = 0; // Reset node count for this turn
+            let bestOverallMove = null;
+            let bestScore = -Infinity;
+            const initialAlpha = -Infinity;
+            const initialBeta = Infinity;
+
+            // --- Minimax Simulation ---
+            for (let pieceIndex = 0; pieceIndex < 2; pieceIndex++) {
+              if (this.aiPieces[pieceIndex].length > 0) {
+                for (const posIndex of availablePositions) {
+                  let pieceToPlace = this.aiPieces[pieceIndex].pop();
+                  let formed = null;
+                  let simError = null;
+                  try {
+                    formed = this.board.place(posIndex, pieceToPlace);
+                    const aiClone = [this.aiPieces[0].slice(), this.aiPieces[1].slice()];
+                    const humanClone = [this.humanPieces[0].slice(), this.humanPieces[1].slice()];
+                    let currentScore = formed.length > 0 ? this.minimax(MINIMAX_DEPTH - 1, initialAlpha, initialBeta, true, aiClone, humanClone) : this.minimax(MINIMAX_DEPTH - 1, initialAlpha, initialBeta, false, aiClone, humanClone);
+                    if (currentScore > bestScore) {
+                      bestScore = currentScore;
+                      bestOverallMove = {
+                        index: posIndex,
+                        pieceIndex: pieceIndex,
+                        score: currentScore,
+                        pieceColorKey: pieceToPlace.colorsKey,
+                      };
+                    }
+                  } catch (e) {
+                    simError = e;
+                    console.warn(`AI sim error: ${e.message}`);
+                  } finally {
+                    if (formed !== null || simError) {
+                      try {
+                        this.board.back(1);
+                      } catch (backErr) {
+                        console.error(`CRIT AI back() FAIL: ${backErr}`);
+                        this.isGameOver = true;
+                        this.showGameOverUI("CRITICAL AI ERROR - Board state corrupt");
+                        if (pieceToPlace) this.aiPieces[pieceIndex].push(pieceToPlace);
+                        return;
+                      }
+                    }
+                    if (pieceToPlace) {
+                      this.aiPieces[pieceIndex].push(pieceToPlace);
+                    }
+                  }
+                } // End positions loop
+              } // End if has pieces
+            } // End piece types loop
+            // --- End Minimax Simulation ---
+
+            const endTime = performance.now(); // End timer
+            const duration = ((endTime - startTime) / 1000).toFixed(3); // Calculate duration in seconds
+
+            this.renderer.connectToBoard();
+
+            console.log(`AI Decision Time: ${duration}s, Nodes: ${this.nodesExplored}`);
+
+            // Update UI with thinking stats *before* making the move
+            if (bestOverallMove) {
+              this.updateAIStatsUI(duration, MINIMAX_DEPTH, this.nodesExplored);
+            } else {
+              this.hideAIStatsUI(); // Hide if falling back to random
+            }
+
+
+            // --- Execute Best Move ---
+            if (bestOverallMove) {
+              console.log(`AI Chose: ${bestOverallMove.pieceColorKey} at ${bestOverallMove.index} (Score: ${bestOverallMove.score})`);
+              const pieceToPlace = this.aiPieces[bestOverallMove.pieceIndex].pop();
+              if (!pieceToPlace) {
+                console.error("CRIT AI Error: No piece found!");
+                this.updateLastMoveUI("System", "CRITICAL AI Error: No piece.", -1, false);
+                this.nextTurn();
+                return;
+              }
+              try {
+                const formed = this.board.place(bestOverallMove.index, pieceToPlace);
+                const extraTurn = formed.length > 0;
+                this.updateLastMoveUI("AI", pieceToPlace, bestOverallMove.index, extraTurn);
+                this.updatePieceCountsUI();
+                if (this.checkGameOver()) return;
+                if (extraTurn) {
+                  this.thisTurn();
+                } else {
+                  this.nextTurn();
+                }
+              } catch (e) {
+                console.error(`AI FINAL PLACE ERR: ${e.message}`);
+                this.updateLastMoveUI("AI", pieceToPlace, bestOverallMove.index, false);
+                this.ui.lastMoveText.innerHTML += `<br><strong style="color:red;">Placement Error: ${e.message}</strong>`;
+                this.aiPieces[bestOverallMove.pieceIndex].push(pieceToPlace);
+                this.updatePieceCountsUI();
+                this.nextTurn();
+              }
+            } else {
+              console.warn("AI: Minimax found no move. Random fallback.");
+              this.updateLastMoveUI("System", "AI placing randomly.", -1, false);
+              this.executeRandomAIMove(availablePositions);
+            }
+          }, 50); // Reduced delay slightly as stats display takes time
+        }
+
+        // --- Minimax & Evaluation ---
+        minimax(depth, alpha, beta, isMaximizingPlayer, aiPiecesAvailable, humanPiecesAvailable) {
+          this.nodesExplored++; // ** Increment node counter **
+
+          const hTotal = humanPiecesAvailable[0].length + humanPiecesAvailable[1].length;
+          const aTotal = aiPiecesAvailable[0].length + aiPiecesAvailable[1].length;
+          if (aTotal === 0 && hTotal > 0) return 10000 + depth;
+          if (hTotal === 0 && aTotal > 0) return -10000 - depth;
+          if (aTotal === 0 && hTotal === 0) return 0;
+          let availPos = this.board.getAvailablePositions();
+          if (this.board.getOccupiedPositions().length === 0) availPos = this.board.getEmptyPositions();
+          const canAi = aTotal > 0 && availPos.length > 0;
+          const canHuman = hTotal > 0 && availPos.length > 0;
+          if (depth === 0 || (!canAi && !canHuman)) {
+            return this.evaluateBoard(aiPiecesAvailable, humanPiecesAvailable);
+          }
+          if (isMaximizingPlayer && !canAi) {
+            return this.minimax(depth - 1, alpha, beta, false, aiPiecesAvailable, humanPiecesAvailable);
+          }
+          if (!isMaximizingPlayer && !canHuman) {
+            return this.minimax(depth - 1, alpha, beta, true, aiPiecesAvailable, humanPiecesAvailable);
+          }
+
+          if (isMaximizingPlayer) {
+            let maxEval = -Infinity;
+            let currentAi = [aiPiecesAvailable[0].slice(), aiPiecesAvailable[1].slice()];
+            let currentHuman = [humanPiecesAvailable[0].slice(), humanPiecesAvailable[1].slice()];
+            pieceLoop: for (const pIdx of [0, 1]) {
+              if (currentAi[pIdx].length > 0) {
+                for (const posIdx of availPos) {
+                  let piece = currentAi[pIdx].pop();
+                  let formed = null;
+                  let simErr = null;
+                  try {
+                    formed = this.board.place(posIdx, piece);
+                    let evalS = formed.length > 0 ? this.minimax(depth - 1, alpha, beta, true, currentAi, currentHuman) : this.minimax(depth - 1, alpha, beta, false, currentAi, currentHuman);
+                    maxEval = Math.max(maxEval, evalS);
+                    alpha = Math.max(alpha, evalS);
+                  } catch (e) {
+                    simErr = e;
+                  } finally {
+                    if (formed !== null || simErr) {
+                      try {
+                        this.board.back(1);
+                      } catch (backE) {
+                        console.error(`MINIMAX MAX back FAIL d${depth}: ${backE}`);
+                        maxEval = Math.max(maxEval, -Infinity);
+                        currentAi[pIdx].push(piece);
+                        break;
+                      }
+                    }
+                    currentAi[pIdx].push(piece);
+                  }
+                  if (beta <= alpha) break pieceLoop;
+                }
+              }
+            }
+            return maxEval === -Infinity ? this.evaluateBoard(aiPiecesAvailable, humanPiecesAvailable) : maxEval;
+          } else {
+            let minEval = Infinity;
+            let currentAi = [aiPiecesAvailable[0].slice(), aiPiecesAvailable[1].slice()];
+            let currentHuman = [humanPiecesAvailable[0].slice(), humanPiecesAvailable[1].slice()];
+            pieceLoop: for (const pIdx of [0, 1]) {
+              if (currentHuman[pIdx].length > 0) {
+                for (const posIdx of availPos) {
+                  let piece = currentHuman[pIdx].pop();
+                  let formed = null;
+                  let simErr = null;
+                  try {
+                    formed = this.board.place(posIdx, piece);
+                    let evalS = formed.length > 0 ? this.minimax(depth - 1, alpha, beta, false, currentAi, currentHuman) : this.minimax(depth - 1, alpha, beta, true, currentAi, currentHuman);
+                    minEval = Math.min(minEval, evalS);
+                    beta = Math.min(beta, evalS);
+                  } catch (e) {
+                    simErr = e;
+                  } finally {
+                    if (formed !== null || simErr) {
+                      try {
+                        this.board.back(1);
+                      } catch (backE) {
+                        console.error(`MINIMAX MIN back FAIL d${depth}: ${backE}`);
+                        minEval = Math.min(minEval, Infinity);
+                        currentHuman[pIdx].push(piece);
+                        break;
+                      }
+                    }
+                    currentHuman[pIdx].push(piece);
+                  }
+                  if (beta <= alpha) break pieceLoop;
+                }
+              }
+            }
+            return minEval === Infinity ? this.evaluateBoard(aiPiecesAvailable, humanPiecesAvailable) : minEval;
+          }
+        }
+
+        evaluateBoard(aiPiecesAvailable, humanPiecesAvailable) {
+          let score = 0;
+          const HEX_SCORE = 300; // Score for forming a hexagon
+          const PIECE_ADVANTAGE = 20; // Score for having more pieces
+          const BALANCE_PENALTY = 10; // Penalty factor for piece imbalance (adjustable)
+          const WIN_SCORE = 10000; // Score for a winning state
+          const OPPONENT_CAN_MOVE_PENALTY = 1; // Slight penalty for opponent's available moves (adjustable)
+
+          const hTotal = humanPiecesAvailable[0].length + humanPiecesAvailable[1].length;
+          const aTotal = aiPiecesAvailable[0].length + aiPiecesAvailable[1].length;
+
+          // --- 1. Endgame evaluation (most important) ---
+          if (aTotal === 0 && hTotal > 0) return WIN_SCORE; // AI wins
+          if (hTotal === 0 && aTotal > 0) return -WIN_SCORE; // Opponent wins
+          if (aTotal === 0 && hTotal === 0) return 0; // Draw
+
+          // --- 2. Piece count advantage ---
+          score += (PIECES_COUNT_PER_PLAYER_PER_COLOR * 2 - hTotal - aTotal) * PIECE_ADVANTAGE; // Alternative: total pieces placed
+          // Or keep the original: score += (hTotal - aTotal) * PIECE_ADVANTAGE; (Fewer AI pieces -> higher score) - Confirm which aligns better with the goal
+
+          // --- 3. Formed hexagons ---
+          const completed = this.board.getCompleteHexagons();
+          for (const hex of completed) {
+            const c = hex.color; // Assume hex.color is the primary color, or require more detailed info from the board
+            // Need a way to determine if this color belongs to AI or Human
+            // Simplified check: verify if hex.centerPiece.colors is part of AI's color set
+            let isAIHex = this.aiColors.some(aiColorPair => aiColorPair.includes(c)); // Assuming c is a base color like 'blue', 'red', etc.
+            let isHumanHex = this.humanColors.some(humanColorPair => humanColorPair.includes(c));
+
+            if (isAIHex && !isHumanHex) score += HEX_SCORE;
+            else if (isHumanHex && !isAIHex) score -= HEX_SCORE;
+          }
+
+          // --- 4. AI piece balance penalty (new) ---
+          const aiBalanceDiff = Math.abs(aiPiecesAvailable[0].length - aiPiecesAvailable[1].length);
+          // Imbalance is more critical when one type of piece is very low
+          if (Math.min(aiPiecesAvailable[0].length, aiPiecesAvailable[1].length) <= 2) {
+            score -= aiBalanceDiff * aiBalanceDiff * BALANCE_PENALTY; // Use square to amplify penalty for low counts
+          } else {
+            score -= aiBalanceDiff * BALANCE_PENALTY;
+          }
+
+          // --- 5. Mobility and potential threats ---
+          let availPos = this.board.getAvailablePositions();
+          if (this.board.getOccupiedPositions().length === 0) availPos = this.board.getEmptyPositions();
+
+          const canAiMove = aTotal > 0 && availPos.length > 0;
+          const canHumanMove = hTotal > 0 && availPos.length > 0;
+          const emptyCount = this.board.getEmptyPositions().length;
+
+          // If the board is full or no moves are possible
+          if (emptyCount === 0 && availPos.length === 0) {
+            // When the board is full, the player with fewer pieces wins
+            if (aTotal < hTotal) return WIN_SCORE / 2; // Close to victory
+            if (hTotal < aTotal) return -WIN_SCORE / 2; // Close to defeat
+            return 0; // Draw
+          }
+
+          // If the opponent cannot move (even if they still have pieces)
+          if (!canHumanMove && hTotal > 0) score += WIN_SCORE / 3; // AI is in a strong advantage
+          if (!canAiMove && aTotal > 0) score -= WIN_SCORE / 3; // AI is in a strong disadvantage
+
+          // --- 6. Penalty for opponent's available moves (simplified implementation of improvement point 2) (new) ---
+          // Slightly penalize states that leave many available moves for the opponent
+          // Note: This is a rough indicator; a more precise evaluation would consider whether these positions can form hexagons
+          if (canHumanMove) {
+            score -= availPos.length * OPPONENT_CAN_MOVE_PENALTY;
+          }
+
+          return score;
+        }
+
+        // --- Fallback & Initial Placement ---
+        executeRandomAIMove(availablePositions) {
+          console.log("AI executing random fallback move.");
+          this.hideAIStatsUI(); // Hide stats for random move
+          if (!availablePositions || availablePositions.length === 0) {
+            this.updateLastMoveUI("System", "AI Random: No available positions!", -1, false);
+            this.checkGameOver();
+            this.nextTurn();
+            return;
+          }
+          const placeIdx = availablePositions[Math.floor(Math.random() * availablePositions.length)];
+          const availPIdx = [];
+          if (this.aiPieces[0].length > 0) availPIdx.push(0);
+          if (this.aiPieces[1].length > 0) availPIdx.push(1);
+          if (availPIdx.length === 0) {
+            this.updateLastMoveUI("System", "AI Random: No pieces left!", -1, false);
+            this.checkGameOver();
+            this.nextTurn();
+            return;
+          }
+          const randPIdx = availPIdx[Math.floor(Math.random() * availPIdx.length)];
+          const piece = this.aiPieces[randPIdx].pop();
+          try {
+            const formed = this.board.place(placeIdx, piece);
+            const extra = formed.length > 0;
+            this.updateLastMoveUI("AI (Random)", piece, placeIdx, extra);
+            this.updatePieceCountsUI();
+            if (this.checkGameOver()) return;
+            if (extra) {
+              this.thisTurn();
+            } else {
+              this.nextTurn();
+            }
+          } catch (e) {
+            console.error(`AI RAND PLACE ERR: ${e.message}`);
+            this.updateLastMoveUI("AI (Random)", piece, placeIdx, false);
+            this.ui.lastMoveText.innerHTML += `<br><strong style="color:red;">Rand Placement Err: ${e.message}</strong>`;
+            this.aiPieces[randPIdx].push(piece);
+            this.updatePieceCountsUI();
+            this.checkGameOver();
+            this.nextTurn();
+          }
+        }
+        placeRandomPiece() {
+          if (this.isGameOver) return;
+          const emptyPos = this.board.getEmptyPositions();
+          if (emptyPos.length === 0) {
+            console.error("Board full!");
+            this.updateLastMoveUI("System", "Error: Board full.", -1, false);
+            this.checkGameOver();
+            return;
+          }
+          let randPos = this.board.getRandomPosition();
+          if (randPos === -1 || !this.board.isEmpty(randPos)) {
+            randPos = emptyPos[Math.floor(Math.random() * emptyPos.length)];
+            if (randPos === undefined || !this.board.isEmpty(randPos)) {
+              console.error("Cannot find start pos.");
+              this.updateLastMoveUI("System", "Error: Cannot find start pos.", -1, false);
+              this.isGameOver = true;
+              return;
+            }
+          }
+          this.placeInitialPieceAt(randPos);
+        }
+        placeInitialPieceAt(positionIndex) {
+          let piece = null;
+          let pStackIdx = -1;
+          let pArray = null;
+          let pName = "";
+          if (this.currentTurn === 1) {
+            pArray = this.aiPieces;
+            pName = "AI";
+          } else {
+            pArray = this.humanPieces;
+            pName = "You";
+          }
+          const availStacks = [];
+          if (pArray[0].length > 0) availStacks.push(0);
+          if (pArray[1].length > 0) availStacks.push(1);
+          if (availStacks.length === 0) {
+            console.error(`Initial place err: ${pName} no pieces!`);
+            this.updateLastMoveUI("System", `Error: ${pName} no pieces.`, -1, false);
+            this.isGameOver = true;
+            return;
+          }
+          pStackIdx = availStacks[Math.floor(Math.random() * availStacks.length)];
+          piece = pArray[pStackIdx].pop();
+          if (!piece) {
+            console.error("Could not get initial piece!");
+            this.updateLastMoveUI("System", "Error: No initial piece.", -1, false);
+            this.isGameOver = true;
+            return;
+          }
+          try {
+            const uiData = {
+              ...piece,
+              playerName: pName
+            };
+            this.board.place(positionIndex, piece);
+            this.updateLastMoveUI("Initial", uiData, positionIndex, false);
+            this.updatePieceCountsUI();
+            if (this.checkGameOver()) return;
+            this.thisTurn(); // Same player gets the first turn
+          } catch (e) {
+            console.error(`Initial place err: ${e.message}`);
+            this.updateLastMoveUI("System", `Initial Place Err: ${e.message}`, -1, false);
+            if (pArray && pStackIdx !== -1) pArray[pStackIdx].push(piece);
+            this.updatePieceCountsUI();
+            this.isGameOver = true;
+          }
+        }
+
+      } // End Class Game
+
+      window.currentGameKeyDownListener = null;
+      window.currentGameClickListener = null;
+      window.currentGameMouseMoveListener = null;
+      new Game(); // Start
+    });
+  </script>
+</body>
+
+</html>
