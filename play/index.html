@@ -60,8 +60,10 @@
         <div id="difficulty-modal" class="modal-content">
             <h2>Select Difficulty</h2>
             <div class="modal-buttons">
-                <button id="btn-beginner">Beginner</button> <button id="btn-easy">Easy</button>
-                <button id="btn-normal">Normal</button> <button id="btn-hard">Hard</button>
+                <button id="btn-beginner">Beginner</button>
+                <button id="btn-easy">Easy</button>
+                <button id="btn-normal">Normal</button>
+                <button id="btn-hard">Hard</button>
                 <button id="btn-insane">Insane</button>
             </div>
         </div>
@@ -86,13 +88,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof Tridecco === 'undefined') { document.body.innerHTML = '<h1>Error: Tridecco library not loaded.</h1>'; return; }
 
-            // *** NEW: Win bonus added to difficulty settings ***
+            const STARTING_PLAYER_CODE = 0; // 0=Random, 1=AI, 2=Player
+            
             const DIFFICULTY_SETTINGS = {
-                beginner: { offense: 0,   defense: 0, cautious: 0, winBonus: 1000 },
-                easy:     { offense: 50,  defense: 0, cautious: 0, winBonus: 2000 },
-                normal:   { offense: 100, defense: 0, cautious: 0, winBonus: 3000 },
-                hard:     { offense: 100, defense: 1, cautious: 0, winBonus: 4000 },
-                insane:   { offense: 100, defense: 1, cautious: 1, winBonus: 5000 }
+                beginner: { offense: 0,   defense: 0, cautious: 0 },
+                easy:     { offense: 50,  defense: 0, cautious: 0 },
+                normal:   { offense: 100, defense: 0, cautious: 0 },
+                hard:     { offense: 100, defense: 1, cautious: 0 },
+                insane:   { offense: 100, defense: 1, cautious: 1 }
             };
 
             const AI_DEFENSIVE_PRIORITIES = { playerOpportunitiesCreated: 1, isDangerous: 2, aiOpportunityGain: 3, aiHandLength: 4 };
@@ -123,13 +126,14 @@
 
             class GameManager {
                 constructor() {
-                    this.AI_THINK_DELAY = 1000; this.aiSettings = {};
+                    this.AI_THINK_DELAY = 3000; this.aiSettings = {};  this.diff = "no";
                     this.board = new Tridecco.Board(); this.ai = new AI(); this.userInput = null;
                     this.hands = { player: [[],[],[],[]], ai: [[],[],[],[]] }; this.currentPlayer = null; this.isGameOver = false;
                     this.score = 0; this.highScore = parseInt(localStorage.getItem('trideccoHighScore') || '0', 10);
                     this.hudElements = { player: {}, ai: {} };
                     this.scoreDisplay = document.getElementById('score-value'); this.highScoreDisplay = document.getElementById('high-score-value');
-                    this.modalOverlay = document.getElementById('modal-overlay'); this.difficultyModal = document.getElementById('difficulty-modal');
+                    this.modalOverlay = document.getElementById('modal-overlay');
+                    this.difficultyModal = document.getElementById('difficulty-modal');
                     this.tradeSelectionModal = document.getElementById('trade-selection-modal');
                     this.infoModal = document.getElementById('info-modal'); this.gameOverModal = document.getElementById('game-over-modal'); this.gameOverText = document.getElementById('game-over-text');
                     this.finalScoreText = document.getElementById('final-score-text'); this.playAgainBtn = document.getElementById('play-again-btn');
@@ -140,13 +144,21 @@
                 onRendererReady() { this._initializeHud(); this._updateScoreDisplay(); this._showDifficultySelection(); }
                 _showDifficultySelection() {
                     this.modalOverlay.classList.add('visible'); this.difficultyModal.style.display = 'block';
-                    for (const level in DIFFICULTY_SETTINGS) { document.getElementById(`btn-${level}`).onclick = () => { this.modalOverlay.classList.remove('visible'); this.difficultyModal.style.display = 'none'; this._beginGame(DIFFICULTY_SETTINGS[level]); }; }
+                    for (const level in DIFFICULTY_SETTINGS) {
+                        document.getElementById(`btn-${level}`).onclick = () => {
+                            this.modalOverlay.classList.remove('visible');
+                            this.difficultyModal.style.display = 'none';
+                            this.diff = level;
+                            this._beginGame(DIFFICULTY_SETTINGS[level]);
+                        };
+                    }
                 }
                 _beginGame(settings) {
                     this.aiSettings = settings;
                     if (STARTING_PLAYER_CODE === 0) { this.currentPlayer = Math.random() < 0.5 ? 'ai' : 'player'; } 
                     else { this.currentPlayer = (STARTING_PLAYER_CODE === 1) ? 'ai' : 'player'; }
-                    this.userInput = new UserInput(this.renderer, this.board, this.hands.player, this.hudElements, this.handlePlayerMove.bind(this)); this.userInput.enable();
+                    this.userInput = new UserInput(this.renderer, this.board, this.hands.player, this.hudElements, this.handlePlayerMove.bind(this));
+                    this.userInput.enable();
                     if (this.currentPlayer === 'player') { this._executeMove('player', { position: this.board.getRandomPosition(), handIndex: 0 }); }
                     else { this._triggerAITurn(); }
                 }
@@ -191,30 +203,23 @@
                     declineBtn.onclick = () => { this.modalOverlay.classList.remove('visible'); this.tradeSelectionModal.style.display = 'none'; this._handleSingleHexagon(); this.userInput.enable(); }
                 }
                 _switchTurn() { if (this.isGameOver) return; this.currentPlayer = this.currentPlayer === 'player' ? 'ai' : 'player'; if (this.currentPlayer === 'ai') { this._triggerAITurn(); } else { this.userInput.enable(); } }
-                
-                // *** BUG FIX: THIS NOW CORRECTLY HANDLES HIGH SCORE ***
                 _endGame(winnerText) {
+                    let bonus = 0;
+                    if (this.diff == "beginner") bonus = 1000;
+                    else if(this.diff == "easy") bonus = 2000;
+                    else if(this.diff == "normal") bonus = 3000;
+                    else if(this.diff == "hard") bonus = 4000;
+                    else if(this.diff == "insane") bonus = 5000;
+                    
                     if (this.isGameOver) return; this.isGameOver = true;
-                    
-                    if (winnerText.startsWith('Player')) {
-                        this.score += this.aiSettings.winBonus || 1000; // Use bonus from settings, default to 1000
-                        this.score += this.hands.ai.flat().length * 100;
-                    }
-
-                    if (this.score > this.highScore) {
-                        this.highScore = this.score;
-                        localStorage.setItem('trideccoHighScore', this.highScore);
-                    }
+                    if (winnerText.startsWith('Player')) { this.score += bonus; this.score += this.hands.ai.flat().length * 100; }
+                    if (this.score > this.highScore) { this.highScore = this.score; localStorage.setItem('trideccoHighScore', this.highScore); }
                     this._updateScoreDisplay();
-                    
-                    this.gameOverText.textContent = winnerText;
-                    this.finalScoreText.textContent = this.score;
-                    this.gameOverModal.style.display = 'block';
-                    this.modalOverlay.classList.add('visible');
-this.playAgainBtn.onclick = () => window.location.reload();
+                    this.gameOverText.textContent = winnerText; this.finalScoreText.textContent = this.score;
+                    this.gameOverModal.style.display = 'block'; this.modalOverlay.classList.add('visible');
+                    this.playAgainBtn.onclick = () => window.location.reload();
                     this.userInput.disable();
                 }
-
                 _checkWinByNoPieces() { if (this.hands.player.flat().length === 0) { this._endGame('Player Wins!'); return true; } if (this.hands.ai.flat().length === 0) { this._endGame('AI Wins!'); return true; } return false; }
             }
             new GameManager();
