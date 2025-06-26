@@ -22,7 +22,7 @@
         .hud-piece-count { color: white; font-size: 1.2em; font-weight: bold; margin-top: 5px; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .modal-overlay.visible { display: flex; }
-        .modal-content { background-color: #34495e; color: white; padding: 25px; border-radius: 10px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: none; }
+        .modal-content { background-color: #34495e; color: white; padding: 25px; border-radius: 10px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: none; min-width: 350px; }
         .modal-content h2 { margin-top: 0; }
         .modal-buttons { margin-top: 20px; display: flex; gap: 15px; justify-content: center; }
         .modal-buttons button { font-size: 16px; padding: 10px 20px; cursor: pointer; border: none; border-radius: 5px; }
@@ -34,8 +34,11 @@
         .trade-options .hud-piece-container.selected { border-color: #3498db; box-shadow: 0 0 10px #3498db; }
         #info-modal button, #play-again-btn { background-color: #1abc9c; color: white; }
         #game-over-modal h1 { font-size: 3em; font-weight: bold; color: #f1c40f; text-shadow: 2px 2px 5px rgba(0,0,0,0.7); margin: 0; }
-        #game-over-modal p { font-size: 1.5em; margin-top: 10px; }
-        #difficulty-modal .modal-buttons { flex-direction: column; }
+        /* New Score Breakdown Styles */
+        #score-breakdown { text-align: left; margin-top: 20px; font-size: 1.2em; }
+        #score-breakdown p { margin: 8px 0; display: flex; justify-content: space-between; }
+        #score-breakdown span { font-weight: bold; margin-left: 20px; }
+        #total-score-row { border-top: 2px solid #566573; padding-top: 10px; margin-top: 10px !important; font-size: 1.3em;}
     </style>
 </head>
 <body>
@@ -60,10 +63,8 @@
         <div id="difficulty-modal" class="modal-content">
             <h2>Select Difficulty</h2>
             <div class="modal-buttons">
-                <button id="btn-beginner">Beginner</button>
-                <button id="btn-easy">Easy</button>
-                <button id="btn-normal">Normal</button>
-                <button id="btn-hard">Hard</button>
+                <button id="btn-beginner">Beginner</button> <button id="btn-easy">Easy</button>
+                <button id="btn-normal">Normal</button> <button id="btn-hard">Hard</button>
                 <button id="btn-insane">Insane</button>
             </div>
         </div>
@@ -79,7 +80,13 @@
         </div>
         <div id="game-over-modal" class="modal-content">
              <h1 id="game-over-text"></h1>
-             <p>Final Score: <span id="final-score-text">0</span></p>
+             <!-- New Score Breakdown Structure -->
+             <div id="score-breakdown">
+                <p>Base Score: <span id="base-score-value">0</span></p>
+                <p id="win-bonus-row">Win Bonus (<span id="win-bonus-difficulty"></span>): <span id="win-bonus-value">0</span></p>
+                <p id="pieces-bonus-row">Pieces Bonus (<span id="pieces-bonus-count"></span> x 100): <span id="pieces-bonus-value">0</span></p>
+                <p id="total-score-row">Total Score: <span id="total-score-value">0</span></p>
+             </div>
              <div class="modal-buttons"><button id="play-again-btn">Play Again</button></div>
         </div>
     </div>
@@ -88,19 +95,17 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof Tridecco === 'undefined') { document.body.innerHTML = '<h1>Error: Tridecco library not loaded.</h1>'; return; }
 
-            const STARTING_PLAYER_CODE = 0; // 0=Random, 1=AI, 2=Player
-            
             const DIFFICULTY_SETTINGS = {
-                beginner: { offense: 0,   defense: 0, cautious: 0 },
-                easy:     { offense: 50,  defense: 0, cautious: 0 },
-                normal:   { offense: 100, defense: 0, cautious: 0 },
-                hard:     { offense: 100, defense: 1, cautious: 0 },
-                insane:   { offense: 100, defense: 1, cautious: 1 }
+                beginner: { name: 'Beginner', offense: 0,   defense: 0, cautious: 0, winBonus: 1000 },
+                easy:     { name: 'Easy',     offense: 50,  defense: 0, cautious: 0, winBonus: 2000 },
+                normal:   { name: 'Normal',   offense: 100, defense: 0, cautious: 0, winBonus: 3000 },
+                hard:     { name: 'Hard',     offense: 100, defense: 1, cautious: 0, winBonus: 4000 },
+                insane:   { name: 'Insane',   offense: 100, defense: 1, cautious: 1, winBonus: 5000 }
             };
 
             const AI_DEFENSIVE_PRIORITIES = { playerOpportunitiesCreated: 1, isDangerous: 2, aiOpportunityGain: 3, aiHandLength: 4 };
 
-            class AI {
+            class AI { /* ... AI class remains unchanged ... */ 
                 getBestMove(board, aiHands, playerHands, settings) { if (settings.cautious) { return this._getMove_Cautious(board, aiHands, playerHands, settings.defense); } return this._getMove_Standard(board, aiHands, playerHands, settings.offense, settings.defense); }
                 getGivePieceDecision(aiHands) { const getHandStats = (hands) => hands.map((hand, index) => ({ hand, index })).filter(h => h.hand.length > 0); const aiStats = getHandStats(aiHands); if (aiStats.length === 0) return null; const aiMaxLength = Math.max(...aiStats.map(h => h.hand.length)); const aiLongestHands = aiStats.filter(h => h.hand.length === aiMaxLength); const handToGiveFrom = aiLongestHands[Math.floor(Math.random() * aiLongestHands.length)]; return handToGiveFrom.hand[0]; }
                 _getMove_Standard(board, aiHands, playerHands, offenseChance, defenseEnabled) { const scoringMove = this._findBestScoringMove(board, aiHands); if (scoringMove && (Math.random() * 100 < offenseChance)) { return { ...scoringMove, isScoringMove: true }; } if (defenseEnabled) { const defensiveMove = this._findBestDefensiveMove(board, aiHands, playerHands); if (defensiveMove) return { ...defensiveMove, isScoringMove: false }; } return this._getRandomMove(board, aiHands); }
@@ -113,8 +118,7 @@
                 _calculatePlayerOpportunities(board, playerHands) { const opportunities = new Set(); playerHands.forEach(hand => { if(hand.length > 0) board.getHexagonPositions(hand[0]).forEach(([pos]) => opportunities.add(pos)); }); return opportunities.size; }
                 _calculateAIOpportunities(board, aiHands) { const opportunities = new Set(); aiHands.forEach(hand => { if(hand.length > 0) board.getHexagonPositions(hand[0]).forEach(([pos]) => opportunities.add(pos)); }); return opportunities.size; }
             }
-
-            class UserInput {
+            class UserInput { /* ... UserInput class remains unchanged ... */ 
                 constructor(renderer, board, playerHands, hudElements, onMoveCallback) { this.renderer = renderer; this.board = board; this.playerHands = playerHands; this.hudElements = hudElements; this.onMove = onMoveCallback; this.draggedHandIndex = null; this.lastPreviewIndex = null; this._handleDragStart = this._handleDragStart.bind(this); this._handleDragEnd = this._handleDragEnd.bind(this); this._handleDragOver = this._handleDragOver.bind(this); this._handleDrop = this._handleDrop.bind(this); }
                 enable() { this.hudElements.player.containers.forEach((el, index) => { el.addEventListener('dragstart', (event) => this._handleDragStart(event, index)); el.addEventListener('dragend', this._handleDragEnd); }); this.renderer.addEventListener('dragover', this._handleDragOver, {}); this.renderer.addEventListener('drop', this._handleDrop, {}); }
                 disable() { this.renderer.clearPreview(); }
@@ -123,10 +127,10 @@
                 _handleDragOver(index) { if (this.draggedHandIndex === null) return; if (index !== this.lastPreviewIndex) { const availablePositions = this.board.getAvailablePositions(); if (availablePositions.includes(index)) { this.renderer.previewPiece(index, this.playerHands[this.draggedHandIndex][0]); } else { this.renderer.clearPreview(); } this.lastPreviewIndex = index; } }
                 _handleDrop(index) { if (this.draggedHandIndex === null || index === -1) return; if (this.board.getAvailablePositions().includes(index)) { this.onMove({ position: index, handIndex: this.draggedHandIndex }); } }
             }
-
+            
             class GameManager {
                 constructor() {
-                    this.AI_THINK_DELAY = 3000; this.aiSettings = {};  this.diff = "no";
+                    this.AI_THINK_DELAY = 1000; this.aiSettings = {};
                     this.board = new Tridecco.Board(); this.ai = new AI(); this.userInput = null;
                     this.hands = { player: [[],[],[],[]], ai: [[],[],[],[]] }; this.currentPlayer = null; this.isGameOver = false;
                     this.score = 0; this.highScore = parseInt(localStorage.getItem('trideccoHighScore') || '0', 10);
@@ -135,8 +139,10 @@
                     this.modalOverlay = document.getElementById('modal-overlay');
                     this.difficultyModal = document.getElementById('difficulty-modal');
                     this.tradeSelectionModal = document.getElementById('trade-selection-modal');
-                    this.infoModal = document.getElementById('info-modal'); this.gameOverModal = document.getElementById('game-over-modal'); this.gameOverText = document.getElementById('game-over-text');
-                    this.finalScoreText = document.getElementById('final-score-text'); this.playAgainBtn = document.getElementById('play-again-btn');
+                    this.infoModal = document.getElementById('info-modal');
+                    this.gameOverModal = document.getElementById('game-over-modal');
+                    this.gameOverText = document.getElementById('game-over-text');
+                    this.playAgainBtn = document.getElementById('play-again-btn');
                     this._initializePieces();
                     this.renderer = new Tridecco.Renderer({ board: this.board, container: CanvasContainer, }, () => this.onRendererReady());
                 }
@@ -144,21 +150,13 @@
                 onRendererReady() { this._initializeHud(); this._updateScoreDisplay(); this._showDifficultySelection(); }
                 _showDifficultySelection() {
                     this.modalOverlay.classList.add('visible'); this.difficultyModal.style.display = 'block';
-                    for (const level in DIFFICULTY_SETTINGS) {
-                        document.getElementById(`btn-${level}`).onclick = () => {
-                            this.modalOverlay.classList.remove('visible');
-                            this.difficultyModal.style.display = 'none';
-                            this.diff = level;
-                            this._beginGame(DIFFICULTY_SETTINGS[level]);
-                        };
-                    }
+                    for (const level in DIFFICULTY_SETTINGS) { document.getElementById(`btn-${level}`).onclick = () => { this.modalOverlay.classList.remove('visible'); this.difficultyModal.style.display = 'none'; this._beginGame(DIFFICULTY_SETTINGS[level]); }; }
                 }
                 _beginGame(settings) {
                     this.aiSettings = settings;
                     if (STARTING_PLAYER_CODE === 0) { this.currentPlayer = Math.random() < 0.5 ? 'ai' : 'player'; } 
                     else { this.currentPlayer = (STARTING_PLAYER_CODE === 1) ? 'ai' : 'player'; }
-                    this.userInput = new UserInput(this.renderer, this.board, this.hands.player, this.hudElements, this.handlePlayerMove.bind(this));
-                    this.userInput.enable();
+                    this.userInput = new UserInput(this.renderer, this.board, this.hands.player, this.hudElements, this.handlePlayerMove.bind(this)); this.userInput.enable();
                     if (this.currentPlayer === 'player') { this._executeMove('player', { position: this.board.getRandomPosition(), handIndex: 0 }); }
                     else { this._triggerAITurn(); }
                 }
@@ -203,23 +201,49 @@
                     declineBtn.onclick = () => { this.modalOverlay.classList.remove('visible'); this.tradeSelectionModal.style.display = 'none'; this._handleSingleHexagon(); this.userInput.enable(); }
                 }
                 _switchTurn() { if (this.isGameOver) return; this.currentPlayer = this.currentPlayer === 'player' ? 'ai' : 'player'; if (this.currentPlayer === 'ai') { this._triggerAITurn(); } else { this.userInput.enable(); } }
+                
+                // *** BUG FIX: THIS NOW CORRECTLY HANDLES THE SCORE BREAKDOWN ***
                 _endGame(winnerText) {
-                    let bonus = 0;
-                    if (this.diff == "beginner") bonus = 1000;
-                    else if(this.diff == "easy") bonus = 2000;
-                    else if(this.diff == "normal") bonus = 3000;
-                    else if(this.diff == "hard") bonus = 4000;
-                    else if(this.diff == "insane") bonus = 5000;
-                    
                     if (this.isGameOver) return; this.isGameOver = true;
-                    if (winnerText.startsWith('Player')) { this.score += bonus; this.score += this.hands.ai.flat().length * 100; }
-                    if (this.score > this.highScore) { this.highScore = this.score; localStorage.setItem('trideccoHighScore', this.highScore); }
+                    
+                    const isPlayerWinner = winnerText.startsWith('Player');
+                    const baseScore = this.score;
+                    let winBonus = 0;
+                    let piecesBonus = 0;
+
+                    if (isPlayerWinner) {
+                        winBonus = this.aiSettings.winBonus || 0;
+                        const piecesLeft = this.hands.ai.flat().length;
+                        piecesBonus = piecesLeft * 100;
+                        this.score += winBonus + piecesBonus;
+                    }
+
+                    if (this.score > this.highScore) {
+                        this.highScore = this.score;
+                        localStorage.setItem('trideccoHighScore', this.highScore);
+                    }
                     this._updateScoreDisplay();
-                    this.gameOverText.textContent = winnerText; this.finalScoreText.textContent = this.score;
-                    this.gameOverModal.style.display = 'block'; this.modalOverlay.classList.add('visible');
+                    
+                    document.getElementById('game-over-text').textContent = winnerText;
+                    document.getElementById('base-score-value').textContent = baseScore;
+                    document.getElementById('win-bonus-difficulty').textContent = this.aiSettings.name || 'N/A';
+                    document.getElementById('win-bonus-value').textContent = winBonus;
+                    document.getElementById('pieces-bonus-count').textContent = this.hands.ai.flat().length;
+                    document.getElementById('pieces-bonus-value').textContent = piecesBonus;
+                    document.getElementById('total-score-value').textContent = this.score;
+
+                    // Hide rows if player didn't win
+                    document.getElementById('win-bonus-row').style.display = isPlayerWinner ? 'flex' : 'none';
+                    document.getElementById('pieces-bonus-row').style.display = isPlayerWinner ? 'flex' : 'none';
+                    document.getElementById('total-score-row').style.borderTop = isPlayerWinner ? '2px solid #566573' : 'none';
+
+
+                    this.gameOverModal.style.display = 'block';
+                    this.modalOverlay.classList.add('visible');
                     this.playAgainBtn.onclick = () => window.location.reload();
                     this.userInput.disable();
                 }
+
                 _checkWinByNoPieces() { if (this.hands.player.flat().length === 0) { this._endGame('Player Wins!'); return true; } if (this.hands.ai.flat().length === 0) { this._endGame('AI Wins!'); return true; } return false; }
             }
             new GameManager();
