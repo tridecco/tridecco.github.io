@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tridecco Game</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/tridecco-board@0.6.2/dist/tridecco-board.min.js"></script>
+
+  <style>
+    /* --- General Layout & Theming --- */
+    :root {
+      --bg-color: #1f2937;
+      /* Dark Slate Gray */
+      --primary-color: #3b82f6;
+      /* Blue-500 */
+      --secondary-color: #4b5563;
+      /* Gray-600 */
+      --highlight-color: #f59e0b;
+      /* Amber-500 */
+      --text-color: #f3f4f6;
+      /* Gray-100 */
+      --text-muted-color: #9ca3af;
+      /* Gray-400 */
+      --success-color: #10b981;
+      /* Emerald-500 */
+      --danger-color: #ef4444;
+      /* Red-500 */
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #111827, #374151);
+      /* Darker Gradient */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      position: relative;
+      color: var(--text-color);
+    }
+
+    /* --- Score & HUD --- */
+    #score-container {
+      position: absolute;
+      top: 20px;
+      left: 25px;
+      right: 25px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.25rem;
+      font-weight: 600;
+      pointer-events: none;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    #score,
+    #high-score {
+      background-color: rgba(0, 0, 0, 0.2);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      backdrop-filter: blur(5px);
+    }
+
+    #score-value,
+    #high-score-value {
+      color: var(--highlight-color);
+      margin-left: 8px;
+    }
+
+    @keyframes score-jump {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      25% {
+        transform: scale(1.5);
+        color: #fff;
+        text-shadow: 0 0 10px #fff;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .score-animated {
+      display: inline-block;
+      /* Necessary for transform to work */
+      animation: score-jump 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    }
+
+    .hud {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+      gap: 25px;
+      width: 100%;
+      min-height: 110px;
+    }
+
+    #ai-hud {
+      margin-bottom: 20px;
+      filter: saturate(0.8);
+    }
+
+    #player-hud {
+      margin-top: 20px;
+    }
+
+    /* --- Piece Styling --- */
+    .hud-piece-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      background: linear-gradient(145deg, #4b5563, #2e3744);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    }
+
+    #player-hud .hud-piece-container {
+      cursor: grab;
+    }
+
+    #player-hud .hud-piece-container:active {
+      cursor: grabbing;
+      transform: scale(0.95);
+    }
+
+    .hud-piece-container.dragging {
+      opacity: 0.4;
+      box-shadow: none;
+    }
+
+    .hud-piece-image {
+      width: 78px;
+      height: 68px;
+      filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.3));
+    }
+
+    .hud-piece-count {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background-color: var(--primary-color);
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 2px solid var(--bg-color);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    /* --- Board --- */
+    #CanvasContainer {
+      width: 80vmin;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      max-width: 650px;
+      max-height: 650px;
+      border-radius: 16px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 6px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    /* --- Modals --- */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(17, 24, 39, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-overlay.visible {
+      display: flex;
+    }
+
+    .modal-content {
+      background: linear-gradient(145deg, #4b5563, #2e3744);
+      color: var(--text-color);
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: none;
+      max-width: 90%;
+      width: 500px;
+    }
+
+    .modal-content h2 {
+      margin-top: 0;
+      font-size: 1.75rem;
+    }
+
+    .modal-buttons {
+      margin-top: 25px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+
+    .modal-buttons button {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 12px 24px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-buttons button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-buttons button:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    #trade-confirm-btn {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    #trade-confirm-btn:disabled {
+      background-color: var(--secondary-color);
+      color: var(--text-muted-color);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    #trade-decline-btn {
+      background-color: var(--danger-color);
+      color: white;
+    }
+
+    #info-modal button,
+    #play-again-btn,
+    #difficulty-modal button {
+      background-color: var(--success-color);
+      color: white;
+      width: 100%;
+    }
+
+    #difficulty-modal .modal-buttons {
+      flex-direction: column;
+    }
+
+    .trade-options {
+      display: flex;
+      gap: 15px;
+      margin-top: 15px;
+      justify-content: center;
+    }
+
+    .trade-options .hud-piece-container {
+      cursor: pointer;
+      border-color: var(--text-muted-color);
+    }
+
+    .trade-options .hud-piece-container.selected {
+      border-color: var(--highlight-color);
+      box-shadow: 0 0 15px var(--highlight-color);
+    }
+
+    #trade-selection-modal h2 {
+      color: var(--highlight-color);
+      margin-bottom: 25px;
+    }
+
+    .trade-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+
+    .trade-player-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .trade-player-section p {
+      font-size: 1.1rem;
+      color: var(--text-muted-color);
+      margin-bottom: 15px;
+    }
+
+    .trade-options {
+      display: flex;
+      flex-wrap: wrap;
+      /* Allow pieces to wrap if many */
+      gap: 15px;
+      justify-content: center;
+      min-height: 80px;
+      /* Ensure container has height */
+    }
+
+    /* Add a specific class for trade piece items to avoid conflicts */
+    .trade-piece-item {
+      cursor: pointer;
+      border: 2px solid var(--secondary-color);
+      transition: all 0.2s ease;
+      border-radius: 8px;
+      padding: 8px;
+      background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .trade-piece-item:hover {
+      border-color: var(--text-muted-color);
+    }
+
+    .trade-piece-item.selected {
+      border-color: var(--highlight-color);
+      transform: scale(1.1);
+      box-shadow: 0 0 15px var(--highlight-color);
+    }
+
+    .trade-arrows {
+      font-size: 3rem;
+      color: var(--text-muted-color);
+      align-self: center;
+      padding-bottom: 40px;
+      /* Align with the center of the options */
+    }
+
+    #game-over-modal h1 {
+      font-size: 3.5em;
+      font-weight: bold;
+      color: var(--highlight-color);
+      text-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+      margin: 0;
+    }
+
+    #game-over-modal p {
+      font-size: 1.5em;
+      margin-top: 10px;
+      color: var(--text-muted-color);
+    }
+
+    #game-over-modal p span {
+      color: var(--text-color);
+      font-weight: bold;
+    }
+
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- HTML Structure remains the same to ensure JS compatibility -->
+  <div id="score-container">
+    <div id="score">Score: <span id="score-value">0</span></div>
+    <div id="high-score">High Score: <span id="high-score-value">0</span></div>
+  </div>
+  <div id="ai-hud" class="hud">
+    <div class="hud-piece-container" id="ai-hud-piece-0" style="display: none;"><canvas class="hud-piece-image" width="120" height="104"></canvas><span class="hud-piece-count">0</span></div>
+    <div class="hud-piece-container" id="ai-hud-piece-1" style="display: none;"><canvas class="hud-piece-image" width="120" height="104"></canvas><span class="hud-piece-count">0</span></div>
+    <div class="hud-piece-container" id="ai-hud-piece-2" style="display: none;"><canvas class="hud-piece-image" width="120" height="104"></canvas><span class="hud-piece-count">0</span></div>
+    <div class="hud-piece-container" id="ai-hud-piece-3" style="display: none;"><canvas class="hud-piece-image" width="120" height="104"></canvas><span class="hud-piece-count">0</span></div>
+  </div>
+  <div id="CanvasContainer"></div>
+  <div id="player-hud" class="hud">
+    <div class="hud-piece-container" id="hud-piece-0" style="display: none;"><canvas class="hud-piece-image" width="120" height="104"></canvas><span class="hud-piece-count">0</span></div>
+    <div class="hud-piece-container" id="hud-piece-1" style="display: none;"><canvas class="hud-piece-image" width="120" height="104"></canvas><span class="hud-piece-count">0</span></div>
+    <div class="hud-piece-container" id="hud-piece-2" style="display: none;"><canvas class="hud-piece-image" width="120" height="104"></canvas><span class="hud-piece-count">0</span></div>
+    <div class="hud-piece-container" id="hud-piece-3" style="display: none;"><canvas class="hud-piece-image" width="120" height="104"></canvas><span class="hud-piece-count">0</span></div>
+  </div>
+  <div id="modal-overlay" class="modal-overlay">
+    <div id="difficulty-modal" class="modal-content">
+      <h2>Select Difficulty</h2>
+      <div class="modal-buttons">
+        <button id="btn-beginner">Beginner</button>
+        <button id="btn-easy">Easy</button>
+        <button id="btn-normal">Normal</button>
+        <button id="btn-hard">Hard</button>
+        <button id="btn-insane">Insane</button>
+      </div>
+    </div>
+    <div id="info-modal" class="modal-content">
+      <h2 id="info-modal-title"></h2>
+      <p id="info-modal-text"></p>
+      <div class="modal-buttons"> <button id="info-modal-ok-btn">OK</button> </div>
+    </div>
+    <div id="game-over-modal" class="modal-content">
+      <h1 id="game-over-text"></h1>
+      <p>Final Score: <span id="final-score-text">0</span></p>
+      <div class="modal-buttons"><button id="play-again-btn">Play Again</button></div>
+    </div>
+  </div>
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <script>
+    // Your existing JavaScript code goes here. No changes are needed.
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof Tridecco === 'undefined') {
+        document.body.innerHTML = '<h1>Error: Tridecco library not loaded.</h1>';
+        return;
+      }
+
+      // ... All your existing JS classes (AI, UserInput, GameManager) ...
+      // ... They will work perfectly with the new styles ...
+      const STARTING_PLAYER_CODE = 0; // 0=Random, 1=AI, 2=Player
+
+      const DIFFICULTY_SETTINGS = {
+        beginner: {
+          offense: 0,
+          defense: 0,
+          cautious: 0
+        },
+        easy: {
+          offense: 50,
+          defense: 0,
+          cautious: 0
+        },
+        normal: {
+          offense: 100,
+          defense: 0,
+          cautious: 0
+        },
+        hard: {
+          offense: 100,
+          defense: 1,
+          cautious: 0
+        },
+        insane: {
+          offense: 100,
+          defense: 1,
+          cautious: 1
+        }
+      };
+
+      const AI_DEFENSIVE_PRIORITIES = {
+        playerOpportunitiesCreated: 1,
+        isDangerous: 2,
+        aiOpportunityGain: 3,
+        aiHandLength: 4
+      };
+
+      class AI {
+        getBestMove(board, aiHands, playerHands, settings) {
+          if (settings.cautious) {
+            return this._getMove_Cautious(board, aiHands, playerHands, settings.defense);
+          }
+          return this._getMove_Standard(board, aiHands, playerHands, settings.offense, settings.defense);
+        }
+        getGivePieceDecision(aiHands) {
+          const getHandStats = (hands) => hands.map((hand, index) => ({
+            hand,
+            index
+          })).filter(h => h.hand.length > 0);
+          const aiStats = getHandStats(aiHands);
+          if (aiStats.length === 0) return null;
+          const aiMaxLength = Math.max(...aiStats.map(h => h.hand.length));
+          const aiLongestHands = aiStats.filter(h => h.hand.length === aiMaxLength);
+          const handToGiveFrom = aiLongestHands[Math.floor(Math.random() * aiLongestHands.length)];
+          return handToGiveFrom.hand[0];
+        }
+        _getMove_Standard(board, aiHands, playerHands, offenseChance, defenseEnabled) {
+          const scoringMove = this._findBestScoringMove(board, aiHands);
+          if (scoringMove && (Math.random() * 100 < offenseChance)) {
+            return {
+              ...scoringMove,
+              isScoringMove: true
+            };
+          }
+          if (defenseEnabled) {
+            const defensiveMove = this._findBestDefensiveMove(board, aiHands, playerHands);
+            if (defensiveMove) return {
+              ...defensiveMove,
+              isScoringMove: false
+            };
+          }
+          return this._getRandomMove(board, aiHands);
+        }
+        _getMove_Cautious(board, aiHands, playerHands, defenseEnabled) {
+          const allScoringMoves = this._findAllScoringMoves(board, aiHands);
+          if (allScoringMoves.length > 0) {
+            const {
+              safeMoves,
+              riskyMoves
+            } = this._partitionScoringMoves(allScoringMoves, board, aiHands, playerHands);
+            const totalAiPiecesLeft = aiHands.flat().length;
+            if (riskyMoves.length > 0 && totalAiPiecesLeft <= riskyMoves.length + 1) {
+              return {
+                ...riskyMoves[0],
+                isScoringMove: true
+              };
+            }
+            if (safeMoves.length > 0) {
+              return {
+                ...safeMoves[0],
+                isScoringMove: true
+              };
+            }
+          }
+          if (defenseEnabled) {
+            const defensiveMove = this._findBestDefensiveMove(board, aiHands, playerHands);
+            if (defensiveMove) {
+              return {
+                ...defensiveMove,
+                isScoringMove: false
+              };
+            }
+          }
+          return this._getRandomMove(board, aiHands);
+        }
+        _partitionScoringMoves(scoringMoves, board, aiHands, playerHands) {
+          const safeMoves = [];
+          const riskyMoves = [];
+          for (const move of scoringMoves) {
+            const initialPlayerOps = this._calculatePlayerOpportunities(board, playerHands);
+            board.place(move.position, aiHands[move.handIndex][0]);
+            const finalPlayerOps = this._calculatePlayerOpportunities(board, playerHands);
+            board.back();
+            if (finalPlayerOps - initialPlayerOps >= 2) {
+              riskyMoves.push(move);
+            } else {
+              safeMoves.push(move);
+            }
+          }
+          return {
+            safeMoves,
+            riskyMoves
+          };
+        }
+        _findAllScoringMoves(board, aiHands) {
+          let allMoves = [];
+          aiHands.forEach((hand, handIndex) => {
+            if (hand.length > 0) {
+              allMoves.push(...board.getHexagonPositions(hand[0]).map(([pos, count]) => ({
+                handIndex,
+                position: pos,
+                count
+              })));
+            }
+          });
+          allMoves.sort((a, b) => b.count - a.count);
+          return allMoves;
+        }
+        _findBestScoringMove(board, aiHands) {
+          const allMoves = this._findAllScoringMoves(board, aiHands);
+          if (allMoves.length === 0) return null;
+          const maxCount = allMoves[0].count;
+          const bestMoves = allMoves.filter(move => move.count === maxCount);
+          if (bestMoves.length === 1) return bestMoves[0];
+          const preferredMove = bestMoves.sort((a, b) => aiHands[b.handIndex].length - aiHands[a.handIndex].length)[0];
+          return preferredMove;
+        }
+        _getRandomMove(board, aiHands) {
+          const availablePositions = board.getAvailablePositions();
+          if (availablePositions.length === 0) return null;
+          const position = availablePositions[Math.floor(Math.random() * availablePositions.length)];
+          const nonEmptyHands = aiHands.map((hand, index) => hand.length > 0 ? index : -1).filter(index => index !== -1);
+          if (nonEmptyHands.length === 0) return null;
+          const handIndex = nonEmptyHands[Math.floor(Math.random() * nonEmptyHands.length)];
+          return {
+            position,
+            handIndex
+          };
+        }
+        _findBestDefensiveMove(board, aiHands, playerHands) {
+          const availablePositions = board.getAvailablePositions();
+          if (availablePositions.length === 0) return null;
+          const initialPlayerOpportunities = this._calculatePlayerOpportunities(board, playerHands);
+          const initialAIOpportunities = this._calculateAIOpportunities(board, aiHands);
+          let possibleMoves = [];
+          for (const handIndex in aiHands) {
+            if (aiHands[handIndex].length > 0) {
+              const aiPiece = aiHands[handIndex][0];
+              for (const posIndex of availablePositions) {
+                board.place(posIndex, aiPiece);
+                let isDangerous = false;
+                for (const playerHand of playerHands) {
+                  if (playerHand.length > 0 && board.getHexagonPositions(playerHand[0]).some(p => p[1] >= 2)) {
+                    isDangerous = true;
+                    break;
+                  }
+                }
+                possibleMoves.push({
+                  position: posIndex,
+                  handIndex: parseInt(handIndex),
+                  playerOpportunitiesCreated: this._calculatePlayerOpportunities(board, playerHands) - initialPlayerOpportunities,
+                  isDangerous,
+                  aiOpportunityGain: this._calculateAIOpportunities(board, aiHands) - initialAIOpportunities,
+                  aiHandLength: aiHands[handIndex].length
+                });
+                board.back();
+              }
+            }
+          }
+          if (possibleMoves.length === 0) return null;
+          const sortCriteria = Object.entries(AI_DEFENSIVE_PRIORITIES).sort(([, a], [, b]) => a - b).map(([key]) => key);
+          possibleMoves.sort((a, b) => {
+            for (const key of sortCriteria) {
+              let c = 0;
+              switch (key) {
+                case 'playerOpportunitiesCreated':
+                  c = a.playerOpportunitiesCreated - b.playerOpportunitiesCreated;
+                  break;
+                case 'isDangerous':
+                  c = a.isDangerous - b.isDangerous;
+                  break;
+                case 'aiOpportunityGain':
+                  c = b.aiOpportunityGain - a.aiOpportunityGain;
+                  break;
+                case 'aiHandLength':
+                  c = b.aiHandLength - a.aiHandLength;
+                  break;
+              }
+              if (c !== 0) return c;
+            }
+            return 0;
+          });
+          return possibleMoves[0];
+        }
+        _calculatePlayerOpportunities(board, playerHands) {
+          const opportunities = new Set();
+          playerHands.forEach(hand => {
+            if (hand.length > 0) board.getHexagonPositions(hand[0]).forEach(([pos]) => opportunities.add(pos));
+          });
+          return opportunities.size;
+        }
+        _calculateAIOpportunities(board, aiHands) {
+          const opportunities = new Set();
+          aiHands.forEach(hand => {
+            if (hand.length > 0) board.getHexagonPositions(hand[0]).forEach(([pos]) => opportunities.add(pos));
+          });
+          return opportunities.size;
+        }
+      }
+
+      class UserInput {
+        constructor(renderer, board, playerHands, hudElements, onMoveCallback) {
+          this.renderer = renderer;
+          this.board = board;
+          this.playerHands = playerHands;
+          this.hudElements = hudElements;
+          this.onMove = onMoveCallback;
+          this.draggedHandIndex = null;
+          this.lastPreviewIndex = null;
+          this.draggedPieceVisual = null;
+          this._handleDragStart = this._handleDragStart.bind(this);
+          this._handleDragEnd = this._handleDragEnd.bind(this);
+          this._handleDragOver = this._handleDragOver.bind(this);
+          this._handleDrop = this._handleDrop.bind(this);
+        }
+        enable() {
+          this.hudElements.player.containers.forEach((el, index) => {
+            el.setAttribute('draggable', 'true');
+            el.addEventListener('dragstart', (event) => this._handleDragStart(event, index));
+            el.addEventListener('dragend', this._handleDragEnd);
+          });
+          this.renderer.addEventListener('dragover', this._handleDragOver, {});
+          this.renderer.addEventListener('drop', this._handleDrop, {});
+        }
+        disable() {
+          this.renderer.clearPreview();
+        }
+        _createDragVisual(sourceElement) {
+          this._destroyDragVisual();
+          const sourceCanvas = sourceElement.querySelector('.hud-piece-image');
+          if (!sourceCanvas) return;
+          this.draggedPieceVisual = document.createElement('canvas');
+          this.draggedPieceVisual.style.cssText = `position: fixed; pointer-events: none; z-index: 2000; width: ${sourceCanvas.clientWidth}px; height: ${sourceCanvas.clientHeight}px;`;
+          this.draggedPieceVisual.width = sourceCanvas.width;
+          this.draggedPieceVisual.height = sourceCanvas.height;
+          this.draggedPieceVisual.getContext('2d').drawImage(sourceCanvas, 0, 0);
+          document.body.appendChild(this.draggedPieceVisual);
+        }
+        _destroyDragVisual() {
+          if (this.draggedPieceVisual) {
+            this.draggedPieceVisual.remove();
+            this.draggedPieceVisual = null;
+          }
+        }
+        _handleDragStart(event, handIndex) {
+          if (this.playerHands[handIndex].length === 0) {
+            event.preventDefault();
+            return;
+          }
+          this.draggedHandIndex = handIndex;
+          event.currentTarget.classList.add('dragging');
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', handIndex);
+          this._createDragVisual(event.currentTarget);
+          const transparentPixel = document.createElement('canvas');
+          transparentPixel.width = 1;
+          transparentPixel.height = 1;
+          event.dataTransfer.setDragImage(transparentPixel, 0, 0);
+          const updatePosition = (e) => {
+            if (this.draggedPieceVisual) {
+              this.draggedPieceVisual.style.left = `${e.clientX - this.draggedPieceVisual.offsetWidth / 2}px`;
+              this.draggedPieceVisual.style.top = `${e.clientY - this.draggedPieceVisual.offsetHeight / 2}px`;
+            }
+          };
+          document.addEventListener('drag', updatePosition);
+          event.currentTarget.addEventListener('dragend', () => {
+            document.removeEventListener('drag', updatePosition);
+          }, {
+            once: true
+          });
+        }
+        _handleDragEnd(event) {
+          event.currentTarget.classList.remove('dragging');
+          this.renderer.clearPreview();
+          this._destroyDragVisual();
+          this.draggedHandIndex = null;
+          this.lastPreviewIndex = null;
+        }
+        _handleDragOver(index) {
+          if (this.draggedHandIndex === null) return;
+          const availablePositions = this.board.getAvailablePositions();
+          if (availablePositions.includes(index)) {
+            if (this.draggedPieceVisual) this.draggedPieceVisual.style.display = 'none';
+            if (index !== this.lastPreviewIndex) {
+              this.renderer.previewPiece(index, this.playerHands[this.draggedHandIndex][0]);
+            }
+          } else {
+            if (this.draggedPieceVisual) this.draggedPieceVisual.style.display = 'block';
+            if (this.lastPreviewIndex !== -1 && availablePositions.includes(this.lastPreviewIndex)) {
+              this.renderer.clearPreview();
+            }
+          }
+          this.lastPreviewIndex = index;
+        }
+        _handleDrop(index) {
+          if (this.draggedHandIndex === null || index === -1) return;
+          if (this.board.getAvailablePositions().includes(index)) {
+            this.onMove({
+              position: index,
+              handIndex: this.draggedHandIndex
+            });
+          }
+        }
+      }
+
+      function triggerVictoryConfetti() {
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        if (!confettiCanvas || typeof confetti === 'undefined') {
+          console.warn("Confetti canvas or library not found.");
+          return;
+        }
+
+        const myConfetti = confetti.create(confettiCanvas, {
+          resize: true,
+          useWorker: true
+        });
+
+        // --- Animation Sequence ---
+
+        // 1. A burst from the center
+        setTimeout(() => {
+          myConfetti({
+            particleCount: 150,
+            spread: 100,
+            origin: {
+              y: 0.6
+            },
+            scalar: 1.2,
+            colors: ['#f59e0b', '#3b82f6', '#10b981', '#ffffff']
+          });
+        }, 200);
+
+        // 2. Realistic bursts from the sides
+        const shootFromSide = (originX) => {
+          myConfetti({
+            particleCount: 100,
+            angle: originX === 0 ? 60 : 120,
+            spread: 80,
+            origin: {
+              x: originX,
+              y: 0.8
+            },
+            gravity: 0.8,
+            colors: ['#f59e0b', '#3b82f6', '#10b981', '#ffffff']
+          });
+        };
+
+        setTimeout(() => shootFromSide(0), 400); // From left
+        setTimeout(() => shootFromSide(1), 400); // From right
+
+        // 3. A gentle "rain" of confetti for a few seconds
+        const duration = 3 * 1000;
+        const end = Date.now() + duration;
+
+        (function frame() {
+          myConfetti({
+            particleCount: 5,
+            startVelocity: 0,
+            ticks: 200,
+            origin: {
+              x: Math.random(),
+              // since they fall down, start a bit higher than random
+              y: Math.random() - 0.2
+            },
+            colors: ['#f59e0b', '#f3f4f6']
+          });
+
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        }());
+      }
+
+      class GameManager {
+        constructor() {
+          this.AI_THINK_DELAY = 1000;
+          this.aiSettings = {};
+          this.diff = "no";
+          this.board = new Tridecco.Board();
+          this.ai = new AI();
+          this.userInput = null;
+          this.hands = {
+            player: [
+              [],
+              [],
+              [],
+              []
+            ],
+            ai: [
+              [],
+              [],
+              [],
+              []
+            ]
+          };
+          this.currentPlayer = null;
+          this.isGameOver = false;
+          this.score = 0;
+          this.highScore = parseInt(localStorage.getItem('trideccoHighScore') || '0', 10);
+          this.hudElements = {
+            player: {},
+            ai: {}
+          };
+          this.scoreDisplay = document.getElementById('score-value');
+          this.highScoreDisplay = document.getElementById('high-score-value');
+          this.modalOverlay = document.getElementById('modal-overlay');
+          this.difficultyModal = document.getElementById('difficulty-modal');
+          this.tradeSelectionModal = document.getElementById('trade-selection-modal');
+          this.infoModal = document.getElementById('info-modal');
+          this.gameOverModal = document.getElementById('game-over-modal');
+          this.gameOverText = document.getElementById('game-over-text');
+          this.finalScoreText = document.getElementById('final-score-text');
+          this.playAgainBtn = document.getElementById('play-again-btn');
+          this._initializePieces();
+          this.renderer = new Tridecco.Renderer({
+            board: this.board,
+            container: CanvasContainer,
+          }, () => this.onRendererReady());
+        }
+        _initializePieces() {
+          const allPieceTypes = [new Tridecco.Piece(['yellow', 'blue']), new Tridecco.Piece(['white', 'red']), new Tridecco.Piece(['blue', 'white']), new Tridecco.Piece(['red', 'yellow'])];
+          for (let i = 0; i < 9; i++) {
+            this.hands.player[0].push(allPieceTypes[0].clone());
+            this.hands.player[1].push(allPieceTypes[1].clone());
+            this.hands.ai[2].push(allPieceTypes[2].clone());
+            this.hands.ai[3].push(allPieceTypes[3].clone());
+          }
+        }
+        onRendererReady() {
+          this._initializeHud();
+          this._updateScoreDisplay();
+          this._showDifficultySelection();
+        }
+        _showDifficultySelection() {
+          this.modalOverlay.classList.add('visible');
+          this.difficultyModal.style.display = 'block';
+          for (const level in DIFFICULTY_SETTINGS) {
+            document.getElementById(`btn-${level}`).onclick = () => {
+              this.modalOverlay.classList.remove('visible');
+              this.difficultyModal.style.display = 'none';
+              this.diff = level;
+              this._beginGame(DIFFICULTY_SETTINGS[level]);
+            };
+          }
+        }
+        _beginGame(settings) {
+          this.aiSettings = settings;
+          if (STARTING_PLAYER_CODE === 0) {
+            this.currentPlayer = Math.random() < 0.5 ? 'ai' : 'player';
+          } else {
+            this.currentPlayer = (STARTING_PLAYER_CODE === 1) ? 'ai' : 'player';
+          }
+          this.userInput = new UserInput(this.renderer, this.board, this.hands.player, this.hudElements, this.handlePlayerMove.bind(this));
+          this.userInput.enable();
+          if (this.currentPlayer === 'player') {
+            this._executeMove('player', {
+              position: this.board.getRandomPosition(),
+              handIndex: 0
+            });
+          } else {
+            this._triggerAITurn();
+          }
+        }
+        _initializeHud() {
+          this.hudElements.player.containers = Array.from({
+            length: 4
+          }, (_, i) => document.getElementById(`hud-piece-${i}`));
+          this.hudElements.player.canvases = Array.from({
+            length: 4
+          }, (_, i) => document.querySelector(`#hud-piece-${i} .hud-piece-image`));
+          this.hudElements.player.counts = Array.from({
+            length: 4
+          }, (_, i) => document.querySelector(`#hud-piece-${i} .hud-piece-count`));
+          this.hudElements.ai.containers = Array.from({
+            length: 4
+          }, (_, i) => document.getElementById(`ai-hud-piece-${i}`));
+          this.hudElements.ai.canvases = Array.from({
+            length: 4
+          }, (_, i) => document.querySelector(`#ai-hud-piece-${i} .hud-piece-image`));
+          this.hudElements.ai.counts = Array.from({
+            length: 4
+          }, (_, i) => document.querySelector(`#ai-hud-piece-${i} .hud-piece-count`));
+          this._updateAndDrawHud();
+        }
+        _updateAndDrawHud() {
+          ['player', 'ai'].forEach(playerType => {
+            this.hudElements[playerType].containers.forEach((container, index) => {
+              const hand = this.hands[playerType][index];
+              if (hand.length > 0) {
+                container.style.display = 'flex';
+                this.hudElements[playerType].counts[index].textContent = hand.length;
+                this._drawPieceOnCanvas(this.hudElements[playerType].canvases[index], hand[0]);
+              } else {
+                container.style.display = 'none';
+              }
+            });
+          });
+        }
+        _drawPieceOnCanvas(canvas, piece) {
+          if (!canvas || !piece) return;
+          const textureKey = piece.colors.join('-');
+          try {
+            const textureData = this.renderer.getTexture('tiles', textureKey);
+            if (textureData) {
+              const ctx = canvas.getContext('2d');
+              const def = textureData.definition;
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(textureData.image, def.x, def.y, def.w, def.h, 0, 0, canvas.width, canvas.height);
+            }
+          } catch (e) {
+            console.error(`Could not get texture for key: ${textureKey}`, e);
+          }
+        }
+        _updateScoreDisplay() {
+          const scoreSpan = this.scoreDisplay;
+          const oldScore = parseInt(scoreSpan.textContent, 10);
+
+          // Update the text content
+          scoreSpan.textContent = this.score;
+          this.highScoreDisplay.textContent = this.highScore;
+
+          // If score increased, apply the animation
+          if (this.score > oldScore) {
+            scoreSpan.classList.add('score-animated');
+
+            // Remove the class after the animation is done to allow it to be re-triggered
+            scoreSpan.addEventListener('animationend', () => {
+              scoreSpan.classList.remove('score-animated');
+            }, {
+              once: true
+            });
+          }
+        }
+        handlePlayerMove(move) {
+          if (this.currentPlayer !== 'player' || this.isGameOver) return;
+          this._executeMove('player', move);
+        }
+        _triggerAITurn() {
+          if (this.isGameOver) return;
+          this.userInput.disable();
+          setTimeout(() => {
+            let move;
+            if (this.board.getOccupiedPositions().length === 0) {
+              move = {
+                position: this.board.getRandomPosition(),
+                handIndex: this.hands.ai.findIndex(h => h.length > 0)
+              };
+            } else {
+              move = this.ai.getBestMove(this.board, this.hands.ai, this.hands.player, this.aiSettings);
+            }
+            if (move) {
+              this._executeMove('ai', move);
+            } else {
+              this._switchTurn();
+            }
+          }, this.AI_THINK_DELAY);
+        }
+        _animateAIPiece(move, onAnimationEnd) {
+          const startElement = document.getElementById(`ai-hud-piece-${move.handIndex}`);
+          const startCanvas = startElement.querySelector('.hud-piece-image');
+          if (!startElement || !startCanvas) {
+            onAnimationEnd();
+            return;
+          }
+          const startRect = startCanvas.getBoundingClientRect();
+          const boardCanvas = this.renderer._canvas;
+          const boardRect = boardCanvas.getBoundingClientRect();
+          const endLogicalCoords = this.renderer.getPieceCoordinates(move.position);
+          const endX = boardRect.left + endLogicalCoords[0];
+          const endY = boardRect.top + endLogicalCoords[1];
+          const animPiece = document.createElement('canvas');
+          animPiece.width = startCanvas.width;
+          animPiece.height = startCanvas.height;
+          animPiece.getContext('2d').drawImage(startCanvas, 0, 0);
+          Object.assign(animPiece.style, {
+            position: 'fixed',
+            zIndex: '2000',
+            left: `${startRect.left}px`,
+            top: `${startRect.top}px`,
+            width: `${startRect.width}px`,
+            height: `${startRect.height}px`,
+            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+          });
+          document.body.appendChild(animPiece);
+          startElement.style.opacity = '0.3';
+          setTimeout(() => {
+            animPiece.style.left = `${endX - startRect.width / 2}px`;
+            animPiece.style.top = `${endY - startRect.height / 2}px`;
+            animPiece.style.transform = 'scale(0.8)';
+            animPiece.style.opacity = '0.5';
+          }, 20);
+          animPiece.addEventListener('transitionend', () => {
+            document.body.removeChild(animPiece);
+            startElement.style.opacity = '1';
+            onAnimationEnd();
+          }, {
+            once: true
+          });
+        }
+        _executeMove(player, move) {
+          if (this.isGameOver || !this.hands[player][move.handIndex] || this.hands[player][move.handIndex].length === 0) return;
+          const placePieceAndContinue = () => {
+            const piece = this.hands[player][move.handIndex].pop();
+            if (!piece) return;
+            const hexagonsBefore = this.board.getCompleteHexagons().length;
+            this.board.place(move.position, piece);
+            const hexagonsFormed = this.board.getCompleteHexagons().length - hexagonsBefore;
+            if (player === 'player') {
+              const scoreMap = {
+                1: 100,
+                2: 200,
+                3: 300
+              };
+              this.score += scoreMap[hexagonsFormed] || 0;
+            }
+            this._updateAndDrawHud();
+            this._updateScoreDisplay();
+            if (this._checkWinByNoPieces()) return;
+            if (hexagonsFormed >= 3) {
+              this._endGame(player === 'player' ? 'Player Wins!' : 'AI Wins!');
+            } else if (hexagonsFormed === 2) {
+              this._handleDoubleHexagon(player);
+            } else if (hexagonsFormed === 1) {
+              this._handleSingleHexagon();
+            } else {
+              this._switchTurn();
+            }
+          };
+          if (player === 'ai') {
+            this._animateAIPiece(move, placePieceAndContinue);
+          } else {
+            placePieceAndContinue();
+          }
+        }
+        _handleSingleHexagon() {
+          if (this.isGameOver) return;
+          console.log(`${this.currentPlayer.toUpperCase()} gets another turn.`);
+          if (this.currentPlayer === 'ai') this._triggerAITurn();
+        }
+        _handleDoubleHexagon(player) {
+          if (this.isGameOver) return;
+          this.userInput.disable();
+          if (player === 'ai') {
+            this._initiateAITradeGiveStep();
+          } else {
+            this._showPlayerTradeSelection();
+          }
+        }
+        _showInfoModal(title, text, onOk) {
+          this.modalOverlay.classList.add('visible');
+          this.infoModal.style.display = 'block';
+          document.getElementById('info-modal-title').textContent = title;
+          document.getElementById('info-modal-text').textContent = text;
+          document.getElementById('info-modal-ok-btn').onclick = () => {
+            this.infoModal.style.display = 'none';
+            onOk();
+          };
+        }
+        _initiateAITradeGiveStep() {
+          const pieceToGive = this.ai.getGivePieceDecision(this.hands.ai);
+          if (!pieceToGive) {
+            console.log("AI scored a double but couldn't trade.");
+            this._handleSingleHexagon();
+            return;
+          }
+          this._performGive(pieceToGive);
+          this._showInfoModal("AI Trade!", `The AI gives you a ${pieceToGive.colors.join('/')} piece.`, () => {
+            this._initiateAITradeTakeStep(pieceToGive);
+          });
+        }
+        _initiateAITradeTakeStep(pieceGivenByAI) {
+          const playerHands = this.hands.player.map((hand, index) => ({
+            hand,
+            index
+          })).filter(h => h.hand.length > 0 && (!h.hand[0] || !h.hand[0].equals(pieceGivenByAI)));
+          if (playerHands.length === 0) {
+            console.log("Player has no valid pieces to give away.");
+            this.modalOverlay.classList.remove('visible');
+            this._handleSingleHexagon();
+            return;
+          }
+          const minLength = Math.min(...playerHands.map(h => h.hand.length));
+          const shortestHands = playerHands.filter(h => h.hand.length === minLength);
+          const handToTakeFrom = shortestHands[Math.floor(Math.random() * shortestHands.length)];
+          const pieceToTake = handToTakeFrom.hand[0];
+          this._performTake(pieceToTake);
+          this._showInfoModal("Player Gives Piece", `You give the AI a ${pieceToTake.colors.join('/')} piece.`, () => {
+            this.modalOverlay.classList.remove('visible');
+            this._handleSingleHexagon();
+          });
+        }
+        _performGive(piece) {
+          const findAndRemove = (hands, pieceToFind) => {
+            for (const hand of hands) {
+              const index = hand.findIndex(p => p.equals(pieceToFind));
+              if (index !== -1) return hand.splice(index, 1)[0];
+            }
+            return null;
+          };
+          const addToHands = (hands, pieceToAdd) => {
+            const existingHandIndex = hands.findIndex(hand => hand.length > 0 && hand[0].equals(pieceToAdd));
+            if (existingHandIndex !== -1) {
+              hands[existingHandIndex].push(pieceToAdd);
+            } else {
+              const emptyHandIndex = hands.findIndex(hand => hand.length === 0);
+              if (emptyHandIndex !== -1) hands[emptyHandIndex].push(pieceToAdd);
+            }
+          };
+          const pieceToPlayer = findAndRemove(this.hands.ai, piece);
+          if (pieceToPlayer) addToHands(this.hands.player, pieceToPlayer);
+          this._updateAndDrawHud();
+        }
+        _performTake(piece) {
+          const findAndRemove = (hands, pieceToFind) => {
+            for (const hand of hands) {
+              const index = hand.findIndex(p => p.equals(pieceToFind));
+              if (index !== -1) return hand.splice(index, 1)[0];
+            }
+            return null;
+          };
+          const addToHands = (hands, pieceToAdd) => {
+            const existingHandIndex = hands.findIndex(hand => hand.length > 0 && hand[0].equals(pieceToAdd));
+            if (existingHandIndex !== -1) {
+              hands[existingHandIndex].push(pieceToAdd);
+            } else {
+              const emptyHandIndex = hands.findIndex(hand => hand.length === 0);
+              if (emptyHandIndex !== -1) hands[emptyHandIndex].push(pieceToAdd);
+            }
+          };
+          const pieceToAI = findAndRemove(this.hands.player, piece);
+          if (pieceToAI) addToHands(this.hands.ai, pieceToAI);
+          this._updateAndDrawHud();
+        }
+        _performTrade(trade) {
+          this._performGive(trade.take);
+          this._performTake(trade.give);
+        }
+        _showPlayerTradeSelection() {
+          // Create the modal content dynamically
+          const modalContent = document.createElement('div');
+          modalContent.id = 'trade-selection-modal';
+          modalContent.className = 'modal-content';
+          modalContent.style.display = 'block';
+
+          modalContent.innerHTML = `
+        <h2>Double Gem!</h2>
+        <p style="margin-top:-15px; margin-bottom: 30px; color: var(--text-muted-color);">You formed two gems! Force a trade with the AI.</p>
+        <div class="trade-container">
+            <div class="trade-player-section">
+                <p>Your Hand (Piece to Give)</p>
+                <div id="player-trade-options" class="trade-options"></div>
+            </div>
+            <div class="trade-arrows">⇆</div>
+            <div class="trade-player-section">
+                <p>AI's Hand (Piece to Take)</p>
+                <div id="ai-trade-options" class="trade-options"></div>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button id="trade-decline-btn">Skip Trade</button>
+            <button id="trade-confirm-btn" disabled>Confirm Trade</button>
+        </div>
+    `;
+
+          this.modalOverlay.appendChild(modalContent);
+          this.modalOverlay.classList.add('visible');
+
+          const confirmBtn = document.getElementById('trade-confirm-btn');
+          const declineBtn = document.getElementById('trade-decline-btn');
+          let trade = {
+            give: null,
+            take: null,
+            giveElement: null,
+            takeElement: null
+          };
+
+          const createTradeOptions = (containerId, hands, owner) => {
+            const container = document.getElementById(containerId);
+            hands.forEach((hand) => {
+              if (hand.length > 0) {
+                const piece = hand[0];
+                // Use a clone of the HUD piece container for consistent styling
+                const el = this.hudElements.player.containers[0].cloneNode(true);
+                el.className = 'trade-piece-item'; // Use the new specific class
+                this._drawPieceOnCanvas(el.querySelector('.hud-piece-image'), piece);
+                el.querySelector('.hud-piece-count').textContent = hand.length;
+                el.style.display = 'flex';
+
+                el.onclick = () => {
+                  // Deselect others in the same group
+                  Array.from(container.children).forEach(c => c.classList.remove('selected'));
+                  el.classList.add('selected');
+                  if (owner === 'player') {
+                    trade.give = piece;
+                    trade.giveElement = el;
+                  } else {
+                    trade.take = piece;
+                    trade.takeElement = el;
+                  }
+                  confirmBtn.disabled = !(trade.give && trade.take);
+                };
+                container.appendChild(el);
+              }
+            });
+          };
+
+          createTradeOptions('player-trade-options', this.hands.player, 'player');
+          createTradeOptions('ai-trade-options', this.hands.ai, 'ai');
+
+          const closeAndContinue = () => {
+            modalContent.remove(); // Clean up the dynamically created modal
+            this.modalOverlay.classList.remove('visible');
+            this._handleSingleHexagon(); // Player gets another turn after the trade/skip
+            this.userInput.enable();
+          };
+
+          confirmBtn.onclick = () => {
+            // --- ANIMATION LOGIC ---
+            const playerOptionsContainer = document.getElementById('player-trade-options');
+            const aiOptionsContainer = document.getElementById('ai-trade-options');
+
+            const playerStartRect = trade.giveElement.getBoundingClientRect();
+            const aiStartRect = trade.takeElement.getBoundingClientRect();
+
+            // Temporarily move the original elements to body for absolute positioning
+            document.body.appendChild(trade.giveElement);
+            document.body.appendChild(trade.takeElement);
+
+            Object.assign(trade.giveElement.style, {
+              position: 'fixed',
+              left: `${playerStartRect.left}px`,
+              top: `${playerStartRect.top}px`,
+              zIndex: '1001',
+              transition: 'all 0.5s ease-in-out'
+            });
+            Object.assign(trade.takeElement.style, {
+              position: 'fixed',
+              left: `${aiStartRect.left}px`,
+              top: `${aiStartRect.top}px`,
+              zIndex: '1001',
+              transition: 'all 0.5s ease-in-out'
+            });
+
+            // Hide the modal content but keep the overlay
+            modalContent.style.opacity = '0';
+
+            // Animate the pieces swapping positions
+            setTimeout(() => {
+              trade.giveElement.style.left = `${aiStartRect.left}px`;
+              trade.giveElement.style.top = `${aiStartRect.top}px`;
+              trade.takeElement.style.left = `${playerStartRect.left}px`;
+              trade.takeElement.style.top = `${playerStartRect.top}px`;
+            }, 50);
+
+            // After animation, perform the trade and close
+            setTimeout(() => {
+              // *** THE FIX IS HERE ***
+              // First, remove the animated elements from the body
+              trade.giveElement.remove();
+              trade.takeElement.remove();
+
+              // Then, perform the game logic
+              this._performTrade(trade);
+
+              // Finally, close the modal and continue the game
+              closeAndContinue();
+            }, 600); // The timeout should be slightly longer than the transition duration
+          };
+
+          declineBtn.onclick = () => {
+            closeAndContinue();
+          };
+        }
+        _switchTurn() {
+          if (this.isGameOver) return;
+          this.currentPlayer = this.currentPlayer === 'player' ? 'ai' : 'player';
+          if (this.currentPlayer === 'ai') {
+            this._triggerAITurn();
+          } else {
+            this.userInput.enable();
+          }
+        }
+        _endGame(winnerText) {
+          let bonus = 0;
+          if (this.diff == "beginner") bonus = 1000;
+          else if (this.diff == "easy") bonus = 2000;
+          else if (this.diff == "normal") bonus = 3000;
+          else if (this.diff == "hard") bonus = 4000;
+          else if (this.diff == "insane") bonus = 5000;
+
+          if (this.isGameOver) return;
+          this.isGameOver = true;
+
+          // Check if the player is the winner to trigger confetti
+          const playerWon = winnerText.startsWith('You');
+
+          if (playerWon) {
+            this.score += bonus;
+            this.score += this.hands.ai.flat().length * 100;
+            triggerVictoryConfetti();
+          }
+
+          if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem('trideccoHighScore', this.highScore);
+          }
+
+          this._updateScoreDisplay();
+
+          this.gameOverText.textContent = winnerText;
+          this.finalScoreText.textContent = this.score;
+
+          // Show the modal after a short delay to let the initial burst of confetti be seen
+          setTimeout(() => {
+            this.gameOverModal.style.display = 'block';
+            this.modalOverlay.classList.add('visible');
+          }, 800);
+
+          this.playAgainBtn.onclick = () => window.location.reload();
+          this.userInput.disable();
+        }
+        _checkWinByNoPieces() {
+          if (this.hands.player.flat().length === 0) {
+            this._endGame('You Win!');
+            return true;
+          }
+          if (this.hands.ai.flat().length === 0) {
+            this._endGame('AI Wins!');
+            return true;
+          }
+          return false;
+        }
+      }
+      new GameManager();
+    });
+  </script>
+</body>
+
+</html>
