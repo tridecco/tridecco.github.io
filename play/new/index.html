@@ -4,30 +4,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tridecco Game</title>
-
+  <title>Tridecco Game - Upgraded AI & Animations</title>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/tridecco-board@0.6.2/dist/tridecco-board.min.js"></script>
-
   <style>
-    /* --- General Layout & Theming --- */
     :root {
       --bg-color: #1f2937;
-      /* Dark Slate Gray */
       --primary-color: #3b82f6;
-      /* Blue-500 */
       --secondary-color: #4b5563;
-      /* Gray-600 */
       --highlight-color: #f59e0b;
-      /* Amber-500 */
       --text-color: #f3f4f6;
-      /* Gray-100 */
       --text-muted-color: #9ca3af;
-      /* Gray-400 */
       --success-color: #10b981;
-      /* Emerald-500 */
       --danger-color: #ef4444;
-      /* Red-500 */
     }
 
     body {
@@ -38,14 +27,12 @@
       height: 100vh;
       margin: 0;
       background: linear-gradient(135deg, #111827, #374151);
-      /* Darker Gradient */
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       overflow: hidden;
       position: relative;
       color: var(--text-color);
     }
 
-    /* --- Score & HUD --- */
     #score-container {
       position: absolute;
       top: 20px;
@@ -93,7 +80,6 @@
 
     .score-animated {
       display: inline-block;
-      /* Necessary for transform to work */
       animation: score-jump 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
     }
 
@@ -116,7 +102,6 @@
       margin-top: 20px;
     }
 
-    /* --- Piece Styling --- */
     .hud-piece-container {
       position: relative;
       display: flex;
@@ -147,7 +132,7 @@
 
     .hud-piece-image {
       width: 78px;
-      height: 64px;
+      height: 68px;
       filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.3));
     }
 
@@ -169,7 +154,6 @@
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
-    /* --- Board --- */
     #CanvasContainer {
       width: 80vmin;
       height: auto;
@@ -180,7 +164,6 @@
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 6px 6px rgba(0, 0, 0, 0.25);
     }
 
-    /* --- Modals --- */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -263,7 +246,6 @@
       color: white;
     }
 
-    #info-modal button,
     #play-again-btn,
     #difficulty-modal button {
       background-color: var(--success-color);
@@ -273,23 +255,6 @@
 
     #difficulty-modal .modal-buttons {
       flex-direction: column;
-    }
-
-    .trade-options {
-      display: flex;
-      gap: 15px;
-      margin-top: 15px;
-      justify-content: center;
-    }
-
-    .trade-options .hud-piece-container {
-      cursor: pointer;
-      border-color: var(--text-muted-color);
-    }
-
-    .trade-options .hud-piece-container.selected {
-      border-color: var(--highlight-color);
-      box-shadow: 0 0 15px var(--highlight-color);
     }
 
     #trade-selection-modal h2 {
@@ -321,14 +286,11 @@
     .trade-options {
       display: flex;
       flex-wrap: wrap;
-      /* Allow pieces to wrap if many */
       gap: 15px;
       justify-content: center;
       min-height: 80px;
-      /* Ensure container has height */
     }
 
-    /* Add a specific class for trade piece items to avoid conflicts */
     .trade-piece-item {
       cursor: pointer;
       border: 2px solid var(--secondary-color);
@@ -353,7 +315,6 @@
       color: var(--text-muted-color);
       align-self: center;
       padding-bottom: 40px;
-      /* Align with the center of the options */
     }
 
     #game-over-modal h1 {
@@ -388,7 +349,6 @@
 </head>
 
 <body>
-  <!-- HTML Structure remains the same to ensure JS compatibility -->
   <div id="score-container">
     <div id="score">Score: <span id="score-value">0</span></div>
     <div id="high-score">High Score: <span id="high-score-value">0</span></div>
@@ -417,32 +377,20 @@
         <button id="btn-insane">Insane</button>
       </div>
     </div>
-    <div id="info-modal" class="modal-content">
-      <h2 id="info-modal-title"></h2>
-      <p id="info-modal-text"></p>
-      <div class="modal-buttons"> <button id="info-modal-ok-btn">OK</button> </div>
-    </div>
     <div id="game-over-modal" class="modal-content">
       <h1 id="game-over-text"></h1>
       <p>Final Score: <span id="final-score-text">0</span></p>
       <div class="modal-buttons"><button id="play-again-btn">Play Again</button></div>
     </div>
   </div>
-
   <canvas id="confetti-canvas"></canvas>
-
   <script>
-    // Your existing JavaScript code goes here. No changes are needed.
     document.addEventListener('DOMContentLoaded', () => {
       if (typeof Tridecco === 'undefined') {
         document.body.innerHTML = '<h1>Error: Tridecco library not loaded.</h1>';
         return;
       }
-
-      // ... All your existing JS classes (AI, UserInput, GameManager) ...
-      // ... They will work perfectly with the new styles ...
-      const STARTING_PLAYER_CODE = 0; // 0=Random, 1=AI, 2=Player
-
+      const STARTING_PLAYER_CODE = 0;
       const DIFFICULTY_SETTINGS = {
         beginner: {
           offense: 0,
@@ -456,34 +404,299 @@
         },
         normal: {
           offense: 100,
-          defense: 0,
+          defense: 1,
           cautious: 0
         },
         hard: {
           offense: 100,
           defense: 1,
-          cautious: 0
+          cautious: 1
         },
         insane: {
           offense: 100,
           defense: 1,
-          cautious: 1
+          cautious: 1,
+          full_lookahead: 1
         }
       };
-
-      const AI_DEFENSIVE_PRIORITIES = {
-        playerOpportunitiesCreated: 1,
-        isDangerous: 2,
-        aiOpportunityGain: 3,
-        aiHandLength: 4
-      };
-
       class AI {
+        constructor() {
+          this.board = null;
+          this.aiHands = null;
+          this.playerHands = null;
+          this.AI_OFFENSE_CHANCE = 100;
+          this.AI_CAUTIOUS_ENABLED = 1;
+          this.AI_DEFENSE_ENABLED = 1;
+          this.AI_FULL_LOOKAHEAD_ENABLED = 0;
+        }
         getBestMove(board, aiHands, playerHands, settings) {
-          if (settings.cautious) {
-            return this._getMove_Cautious(board, aiHands, playerHands, settings.defense);
+          this.board = board;
+          this.aiHands = aiHands;
+          this.playerHands = playerHands;
+          this.AI_OFFENSE_CHANCE = settings.offense;
+          this.AI_DEFENSE_ENABLED = settings.defense;
+          this.AI_CAUTIOUS_ENABLED = settings.cautious;
+          this.AI_FULL_LOOKAHEAD_ENABLED = settings.full_lookahead || 0;
+          const move = this.decideMove();
+          if (move) {
+            return {
+              position: move.position,
+              handIndex: move.pieceType
+            };
           }
-          return this._getMove_Standard(board, aiHands, playerHands, settings.offense, settings.defense);
+          return null;
+        }
+        decideMove() {
+          return this.offenseOrDefense();
+        }
+        offenseOrDefense() {
+          const scoringMoves = this.getAIPotentialScoringMoves();
+          if (scoringMoves.length > 0) {
+            return this.offense(scoringMoves);
+          } else {
+            return this.defense();
+          }
+        }
+        offense(scoringMoves) {
+          if (Math.floor(Math.random() * 100) < this.AI_OFFENSE_CHANCE) {
+            return this.cautious(scoringMoves);
+          } else {
+            return this.random();
+          }
+        }
+        cautious(scoringMoves) {
+          if (!this.AI_CAUTIOUS_ENABLED) {
+            return this.chooseByMostAbundantPiece(scoringMoves);
+          }
+          if (this.AI_FULL_LOOKAHEAD_ENABLED) {
+            if (this._canFinish('ai') <= 1) {
+              return this.chooseByMostAbundantPiece(scoringMoves);
+            }
+            if (this._canFinish('player') <= 2) {
+              const initialPlayerOpportunities = this.getPlayerPotentialScoringMoves().length;
+              for (const move of scoringMoves) {
+                try {
+                  this.board.place(move.position, this.aiHands[move.pieceType][0]);
+                  if (this.getPlayerPotentialScoringMoves().length - initialPlayerOpportunities === 0) {
+                    this.board.back();
+                    return {
+                      position: move.position,
+                      pieceType: move.pieceType
+                    };
+                  }
+                } finally {
+                  if (this.board.isDirty) this.board.back();
+                }
+              }
+              return this.defense();
+            }
+          }
+          return this.checkDoubles(scoringMoves);
+        }
+        checkDoubles(scoringMoves) {
+          const initialPlayerOpportunities = this.getPlayerPotentialScoringMoves().length;
+          const safeScoringMoves = [];
+          for (const move of scoringMoves) {
+            try {
+              this.board.place(move.position, this.aiHands[move.pieceType][0]);
+              if (this.getPlayerPotentialScoringMoves().length - initialPlayerOpportunities <= 1) {
+                safeScoringMoves.push(move);
+              }
+            } finally {
+              this.board.back();
+            }
+          }
+          if (safeScoringMoves.length === 0) {
+            return this.defense();
+          } else {
+            return this.chooseByMostAbundantPiece(safeScoringMoves);
+          }
+        }
+        defense() {
+          if (!this.AI_DEFENSE_ENABLED) {
+            return this.random();
+          }
+          const availablePositions = this.board.getAvailablePositions();
+          const playableAITypes = this.aiHands.map((hand, i) => hand.length > 0 ? i : -1).filter(i => i !== -1);
+          if (availablePositions.length === 0 || playableAITypes.length === 0) return this.random();
+          let bestDefensiveMoves = [];
+          for (const position of availablePositions) {
+            for (const pieceType of playableAITypes) {
+              bestDefensiveMoves.push({
+                position,
+                pieceType
+              });
+            }
+          }
+          bestDefensiveMoves = this._filterByScoringOpp(bestDefensiveMoves);
+          if (bestDefensiveMoves.length <= 1) return this.chooseByMostAbundantPiece(bestDefensiveMoves);
+          if (this.AI_FULL_LOOKAHEAD_ENABLED) {
+            const result = this._filterToPreventPlayerWin(bestDefensiveMoves);
+            if (result === null) return null;
+            bestDefensiveMoves = result;
+            if (bestDefensiveMoves.length === 0) return this.random();
+          }
+          bestDefensiveMoves = this._filterByDoubleTriple(bestDefensiveMoves);
+          if (bestDefensiveMoves.length <= 1) return this.chooseByMostAbundantPiece(bestDefensiveMoves);
+          bestDefensiveMoves = this._filterByTwoThirdOpportunities(bestDefensiveMoves);
+          return this.chooseByMostAbundantPiece(bestDefensiveMoves);
+        }
+        _canFinish(playerType) {
+          const simBoard = this.board.clone();
+          const simAiHands = this.aiHands.map(hand => hand.map(piece => piece.clone()));
+          const simPlayerHands = this.playerHands.map(hand => hand.map(piece => piece.clone()));
+          const handsToSimulate = playerType === 'ai' ? simAiHands : simPlayerHands;
+          const getSimScoringMoves = () => {
+            const allMoves = [];
+            for (let pieceType = 0; pieceType < handsToSimulate.length; pieceType++) {
+              if (handsToSimulate[pieceType].length > 0) {
+                const piece = handsToSimulate[pieceType][0];
+                allMoves.push(...simBoard.getHexagonPositions(piece).map(([pos, hf]) => ({
+                  pieceType,
+                  position: pos,
+                  hexagonsFormed: hf
+                })));
+              }
+            }
+            return allMoves;
+          };
+          while (true) {
+            const scoringMoves = getSimScoringMoves();
+            if (scoringMoves.length === 0) break;
+            scoringMoves.sort((a, b) => b.hexagonsFormed - a.hexagonsFormed);
+            const bestMove = scoringMoves[0];
+            const pieceToPlay = handsToSimulate[bestMove.pieceType].pop();
+            if (pieceToPlay) {
+              simBoard.place(bestMove.position, pieceToPlay);
+            } else {
+              break;
+            }
+          }
+          return handsToSimulate.flat().length;
+        }
+        _filterByScoringOpp(moves) {
+          const initialPlayerOpportunities = this.getPlayerPotentialScoringMoves().length;
+          const evaluatedMoves = [];
+          for (const move of moves) {
+            try {
+              this.board.place(move.position, this.aiHands[move.pieceType][0]);
+              evaluatedMoves.push({
+                ...move,
+                opportunitiesCreated: this.getPlayerPotentialScoringMoves().length - initialPlayerOpportunities
+              });
+            } finally {
+              this.board.back();
+            }
+          }
+          if (evaluatedMoves.length === 0) return [];
+          const minOpportunities = Math.min(...evaluatedMoves.map(m => m.opportunitiesCreated));
+          return evaluatedMoves.filter(m => m.opportunitiesCreated === minOpportunities);
+        }
+        _filterToPreventPlayerWin(moves) {
+          const safeMoves = [];
+          for (const move of moves) {
+            try {
+              this.board.place(move.position, this.aiHands[move.pieceType][0]);
+              if (this._canFinish('player') > 1) {
+                safeMoves.push(move);
+              }
+            } finally {
+              this.board.back();
+            }
+          }
+          if (safeMoves.length > 0) return safeMoves;
+          if (this._canFinish('player') > 1) {
+            return null;
+          } else {
+            return moves;
+          }
+        }
+        _filterByDoubleTriple(moves) {
+          const evaluatedMoves = [];
+          for (const move of moves) {
+            let playerMaxHexReward = 0;
+            try {
+              this.board.place(move.position, this.aiHands[move.pieceType][0]);
+              const playerCounterMoves = this.getPlayerPotentialScoringMoves();
+              if (playerCounterMoves.length > 0) {
+                playerMaxHexReward = Math.max(...playerCounterMoves.map(m => m.hexagonsFormed));
+              }
+              evaluatedMoves.push({
+                ...move,
+                playerMaxHexReward
+              });
+            } finally {
+              this.board.back();
+            }
+          }
+          if (evaluatedMoves.length === 0) return [];
+          const minPlayerReward = Math.min(...evaluatedMoves.map(m => m.playerMaxHexReward));
+          return evaluatedMoves.filter(m => m.playerMaxHexReward === minPlayerReward);
+        }
+        _filterByTwoThirdOpportunities(moves) {
+          const evaluatedMoves = [];
+          for (const move of moves) {
+            try {
+              this.board.place(move.position, this.aiHands[move.pieceType][0]);
+              evaluatedMoves.push({
+                ...move,
+                futureAIOpportunities: this.getAIPotentialScoringMoves().length
+              });
+            } finally {
+              this.board.back();
+            }
+          }
+          if (evaluatedMoves.length === 0) return [];
+          const maxFutureOpportunities = Math.max(...evaluatedMoves.map(m => m.futureAIOpportunities));
+          return evaluatedMoves.filter(m => m.futureAIOpportunities === maxFutureOpportunities);
+        }
+        chooseByMostAbundantPiece(moves) {
+          if (!moves || moves.length === 0) return this.random();
+          let maxLength = -1,
+            maxColorIndex = -1;
+          for (let i = 0; i < this.aiHands.length; i++) {
+            if (this.aiHands[i].length > maxLength) {
+              maxLength = this.aiHands[i].length;
+              maxColorIndex = i;
+            }
+          }
+          let preferredMoves = moves.filter(move => move.pieceType === maxColorIndex);
+          if (preferredMoves.length === 0) {
+            preferredMoves = moves;
+          }
+          return preferredMoves[Math.floor(Math.random() * preferredMoves.length)];
+        }
+        random() {
+          const availablePositions = this.board.getAvailablePositions();
+          if (availablePositions.length === 0) return null;
+          const randomPosition = availablePositions[Math.floor(Math.random() * availablePositions.length)];
+          const playableAITypes = this.aiHands.map((hand, i) => hand.length > 0 ? i : -1).filter(i => i !== -1);
+          if (playableAITypes.length === 0) return null;
+          const chosenPieceType = playableAITypes[Math.floor(Math.random() * playableAITypes.length)];
+          return {
+            position: randomPosition,
+            pieceType: chosenPieceType
+          };
+        }
+        getAIPotentialScoringMoves() {
+          return this._getScoringMovesFor(this.aiHands);
+        }
+        getPlayerPotentialScoringMoves() {
+          return this._getScoringMovesFor(this.playerHands);
+        }
+        _getScoringMovesFor(hands) {
+          const allScoringMoves = [];
+          for (let pieceType = 0; pieceType < hands.length; pieceType++) {
+            if (hands[pieceType].length > 0) {
+              const piece = hands[pieceType][0];
+              allScoringMoves.push(...this.board.getHexagonPositions(piece).map(([pos, hf]) => ({
+                pieceType,
+                position: pos,
+                hexagonsFormed: hf
+              })));
+            }
+          }
+          return allScoringMoves;
         }
         getGivePieceDecision(aiHands) {
           const getHandStats = (hands) => hands.map((hand, index) => ({
@@ -497,180 +710,7 @@
           const handToGiveFrom = aiLongestHands[Math.floor(Math.random() * aiLongestHands.length)];
           return handToGiveFrom.hand[0];
         }
-        _getMove_Standard(board, aiHands, playerHands, offenseChance, defenseEnabled) {
-          const scoringMove = this._findBestScoringMove(board, aiHands);
-          if (scoringMove && (Math.random() * 100 < offenseChance)) {
-            return {
-              ...scoringMove,
-              isScoringMove: true
-            };
-          }
-          if (defenseEnabled) {
-            const defensiveMove = this._findBestDefensiveMove(board, aiHands, playerHands);
-            if (defensiveMove) return {
-              ...defensiveMove,
-              isScoringMove: false
-            };
-          }
-          return this._getRandomMove(board, aiHands);
-        }
-        _getMove_Cautious(board, aiHands, playerHands, defenseEnabled) {
-          const allScoringMoves = this._findAllScoringMoves(board, aiHands);
-          if (allScoringMoves.length > 0) {
-            const {
-              safeMoves,
-              riskyMoves
-            } = this._partitionScoringMoves(allScoringMoves, board, aiHands, playerHands);
-            const totalAiPiecesLeft = aiHands.flat().length;
-            if (riskyMoves.length > 0 && totalAiPiecesLeft <= riskyMoves.length + 1) {
-              return {
-                ...riskyMoves[0],
-                isScoringMove: true
-              };
-            }
-            if (safeMoves.length > 0) {
-              return {
-                ...safeMoves[0],
-                isScoringMove: true
-              };
-            }
-          }
-          if (defenseEnabled) {
-            const defensiveMove = this._findBestDefensiveMove(board, aiHands, playerHands);
-            if (defensiveMove) {
-              return {
-                ...defensiveMove,
-                isScoringMove: false
-              };
-            }
-          }
-          return this._getRandomMove(board, aiHands);
-        }
-        _partitionScoringMoves(scoringMoves, board, aiHands, playerHands) {
-          const safeMoves = [];
-          const riskyMoves = [];
-          for (const move of scoringMoves) {
-            const initialPlayerOps = this._calculatePlayerOpportunities(board, playerHands);
-            board.place(move.position, aiHands[move.handIndex][0]);
-            const finalPlayerOps = this._calculatePlayerOpportunities(board, playerHands);
-            board.back();
-            if (finalPlayerOps - initialPlayerOps >= 2) {
-              riskyMoves.push(move);
-            } else {
-              safeMoves.push(move);
-            }
-          }
-          return {
-            safeMoves,
-            riskyMoves
-          };
-        }
-        _findAllScoringMoves(board, aiHands) {
-          let allMoves = [];
-          aiHands.forEach((hand, handIndex) => {
-            if (hand.length > 0) {
-              allMoves.push(...board.getHexagonPositions(hand[0]).map(([pos, count]) => ({
-                handIndex,
-                position: pos,
-                count
-              })));
-            }
-          });
-          allMoves.sort((a, b) => b.count - a.count);
-          return allMoves;
-        }
-        _findBestScoringMove(board, aiHands) {
-          const allMoves = this._findAllScoringMoves(board, aiHands);
-          if (allMoves.length === 0) return null;
-          const maxCount = allMoves[0].count;
-          const bestMoves = allMoves.filter(move => move.count === maxCount);
-          if (bestMoves.length === 1) return bestMoves[0];
-          const preferredMove = bestMoves.sort((a, b) => aiHands[b.handIndex].length - aiHands[a.handIndex].length)[0];
-          return preferredMove;
-        }
-        _getRandomMove(board, aiHands) {
-          const availablePositions = board.getAvailablePositions();
-          if (availablePositions.length === 0) return null;
-          const position = availablePositions[Math.floor(Math.random() * availablePositions.length)];
-          const nonEmptyHands = aiHands.map((hand, index) => hand.length > 0 ? index : -1).filter(index => index !== -1);
-          if (nonEmptyHands.length === 0) return null;
-          const handIndex = nonEmptyHands[Math.floor(Math.random() * nonEmptyHands.length)];
-          return {
-            position,
-            handIndex
-          };
-        }
-        _findBestDefensiveMove(board, aiHands, playerHands) {
-          const availablePositions = board.getAvailablePositions();
-          if (availablePositions.length === 0) return null;
-          const initialPlayerOpportunities = this._calculatePlayerOpportunities(board, playerHands);
-          const initialAIOpportunities = this._calculateAIOpportunities(board, aiHands);
-          let possibleMoves = [];
-          for (const handIndex in aiHands) {
-            if (aiHands[handIndex].length > 0) {
-              const aiPiece = aiHands[handIndex][0];
-              for (const posIndex of availablePositions) {
-                board.place(posIndex, aiPiece);
-                let isDangerous = false;
-                for (const playerHand of playerHands) {
-                  if (playerHand.length > 0 && board.getHexagonPositions(playerHand[0]).some(p => p[1] >= 2)) {
-                    isDangerous = true;
-                    break;
-                  }
-                }
-                possibleMoves.push({
-                  position: posIndex,
-                  handIndex: parseInt(handIndex),
-                  playerOpportunitiesCreated: this._calculatePlayerOpportunities(board, playerHands) - initialPlayerOpportunities,
-                  isDangerous,
-                  aiOpportunityGain: this._calculateAIOpportunities(board, aiHands) - initialAIOpportunities,
-                  aiHandLength: aiHands[handIndex].length
-                });
-                board.back();
-              }
-            }
-          }
-          if (possibleMoves.length === 0) return null;
-          const sortCriteria = Object.entries(AI_DEFENSIVE_PRIORITIES).sort(([, a], [, b]) => a - b).map(([key]) => key);
-          possibleMoves.sort((a, b) => {
-            for (const key of sortCriteria) {
-              let c = 0;
-              switch (key) {
-                case 'playerOpportunitiesCreated':
-                  c = a.playerOpportunitiesCreated - b.playerOpportunitiesCreated;
-                  break;
-                case 'isDangerous':
-                  c = a.isDangerous - b.isDangerous;
-                  break;
-                case 'aiOpportunityGain':
-                  c = b.aiOpportunityGain - a.aiOpportunityGain;
-                  break;
-                case 'aiHandLength':
-                  c = b.aiHandLength - a.aiHandLength;
-                  break;
-              }
-              if (c !== 0) return c;
-            }
-            return 0;
-          });
-          return possibleMoves[0];
-        }
-        _calculatePlayerOpportunities(board, playerHands) {
-          const opportunities = new Set();
-          playerHands.forEach(hand => {
-            if (hand.length > 0) board.getHexagonPositions(hand[0]).forEach(([pos]) => opportunities.add(pos));
-          });
-          return opportunities.size;
-        }
-        _calculateAIOpportunities(board, aiHands) {
-          const opportunities = new Set();
-          aiHands.forEach(hand => {
-            if (hand.length > 0) board.getHexagonPositions(hand[0]).forEach(([pos]) => opportunities.add(pos));
-          });
-          return opportunities.size;
-        }
       }
-
       class UserInput {
         constructor(renderer, board, playerHands, hudElements, onMoveCallback) {
           this.renderer = renderer;
@@ -779,18 +819,12 @@
       function triggerVictoryConfetti() {
         const confettiCanvas = document.getElementById('confetti-canvas');
         if (!confettiCanvas || typeof confetti === 'undefined') {
-          console.warn("Confetti canvas or library not found.");
           return;
         }
-
         const myConfetti = confetti.create(confettiCanvas, {
           resize: true,
           useWorker: true
         });
-
-        // --- Animation Sequence ---
-
-        // 1. A burst from the center
         setTimeout(() => {
           myConfetti({
             particleCount: 150,
@@ -802,8 +836,6 @@
             colors: ['#f59e0b', '#3b82f6', '#10b981', '#ffffff']
           });
         }, 200);
-
-        // 2. Realistic bursts from the sides
         const shootFromSide = (originX) => {
           myConfetti({
             particleCount: 100,
@@ -817,14 +849,10 @@
             colors: ['#f59e0b', '#3b82f6', '#10b981', '#ffffff']
           });
         };
-
-        setTimeout(() => shootFromSide(0), 400); // From left
-        setTimeout(() => shootFromSide(1), 400); // From right
-
-        // 3. A gentle "rain" of confetti for a few seconds
+        setTimeout(() => shootFromSide(0), 400);
+        setTimeout(() => shootFromSide(1), 400);
         const duration = 3 * 1000;
         const end = Date.now() + duration;
-
         (function frame() {
           myConfetti({
             particleCount: 5,
@@ -832,18 +860,15 @@
             ticks: 200,
             origin: {
               x: Math.random(),
-              // since they fall down, start a bit higher than random
               y: Math.random() - 0.2
             },
             colors: ['#f59e0b', '#f3f4f6']
           });
-
           if (Date.now() < end) {
             requestAnimationFrame(frame);
           }
         }());
       }
-
       class GameManager {
         constructor() {
           this.AI_THINK_DELAY = 1000;
@@ -878,8 +903,6 @@
           this.highScoreDisplay = document.getElementById('high-score-value');
           this.modalOverlay = document.getElementById('modal-overlay');
           this.difficultyModal = document.getElementById('difficulty-modal');
-          this.tradeSelectionModal = document.getElementById('trade-selection-modal');
-          this.infoModal = document.getElementById('info-modal');
           this.gameOverModal = document.getElementById('game-over-modal');
           this.gameOverText = document.getElementById('game-over-text');
           this.finalScoreText = document.getElementById('final-score-text');
@@ -980,23 +1003,15 @@
               ctx.clearRect(0, 0, canvas.width, canvas.height);
               ctx.drawImage(textureData.image, def.x, def.y, def.w, def.h, 0, 0, canvas.width, canvas.height);
             }
-          } catch (e) {
-            console.error(`Could not get texture for key: ${textureKey}`, e);
-          }
+          } catch (e) {}
         }
         _updateScoreDisplay() {
           const scoreSpan = this.scoreDisplay;
           const oldScore = parseInt(scoreSpan.textContent, 10);
-
-          // Update the text content
           scoreSpan.textContent = this.score;
           this.highScoreDisplay.textContent = this.highScore;
-
-          // If score increased, apply the animation
           if (this.score > oldScore) {
             scoreSpan.classList.add('score-animated');
-
-            // Remove the class after the animation is done to allow it to be re-triggered
             scoreSpan.addEventListener('animationend', () => {
               scoreSpan.classList.remove('score-animated');
             }, {
@@ -1090,7 +1105,7 @@
             this._updateScoreDisplay();
             if (this._checkWinByNoPieces()) return;
             if (hexagonsFormed >= 3) {
-              this._endGame(player === 'player' ? 'Player Wins!' : 'AI Wins!');
+              this._endGame(player === 'player' ? 'You Win!' : 'AI Wins!');
             } else if (hexagonsFormed === 2) {
               this._handleDoubleHexagon(player);
             } else if (hexagonsFormed === 1) {
@@ -1107,60 +1122,216 @@
         }
         _handleSingleHexagon() {
           if (this.isGameOver) return;
-          console.log(`${this.currentPlayer.toUpperCase()} gets another turn.`);
           if (this.currentPlayer === 'ai') this._triggerAITurn();
+          else {
+            this.userInput.enable();
+          }
         }
         _handleDoubleHexagon(player) {
           if (this.isGameOver) return;
           this.userInput.disable();
           if (player === 'ai') {
-            this._initiateAITradeGiveStep();
+            this._initiateAITradeAnimation();
           } else {
             this._showPlayerTradeSelection();
           }
         }
-        _showInfoModal(title, text, onOk) {
-          this.modalOverlay.classList.add('visible');
-          this.infoModal.style.display = 'block';
-          document.getElementById('info-modal-title').textContent = title;
-          document.getElementById('info-modal-text').textContent = text;
-          document.getElementById('info-modal-ok-btn').onclick = () => {
-            this.infoModal.style.display = 'none';
-            onOk();
-          };
-        }
-        _initiateAITradeGiveStep() {
-          const pieceToGive = this.ai.getGivePieceDecision(this.hands.ai);
-          if (!pieceToGive) {
-            console.log("AI scored a double but couldn't trade.");
+        _initiateAITradeAnimation() {
+          const pieceToGiveByAI = this.ai.getGivePieceDecision(this.hands.ai);
+          if (!pieceToGiveByAI) {
             this._handleSingleHexagon();
             return;
           }
-          this._performGive(pieceToGive);
-          this._showInfoModal("AI Trade!", `The AI gives you a ${pieceToGive.colors.join('/')} piece.`, () => {
-            this._initiateAITradeTakeStep(pieceToGive);
-          });
-        }
-        _initiateAITradeTakeStep(pieceGivenByAI) {
           const playerHands = this.hands.player.map((hand, index) => ({
-            hand,
-            index
-          })).filter(h => h.hand.length > 0 && (!h.hand[0] || !h.hand[0].equals(pieceGivenByAI)));
+              hand,
+              index
+            }))
+            .filter(h => h.hand.length > 0 && (!h.hand[0] || !h.hand[0].equals(pieceToGiveByAI)));
           if (playerHands.length === 0) {
-            console.log("Player has no valid pieces to give away.");
-            this.modalOverlay.classList.remove('visible');
             this._handleSingleHexagon();
             return;
           }
           const minLength = Math.min(...playerHands.map(h => h.hand.length));
           const shortestHands = playerHands.filter(h => h.hand.length === minLength);
           const handToTakeFrom = shortestHands[Math.floor(Math.random() * shortestHands.length)];
-          const pieceToTake = handToTakeFrom.hand[0];
-          this._performTake(pieceToTake);
-          this._showInfoModal("Player Gives Piece", `You give the AI a ${pieceToTake.colors.join('/')} piece.`, () => {
+          const pieceToTakeFromPlayer = handToTakeFrom.hand[0];
+          const trade = {
+            give: pieceToTakeFromPlayer,
+            take: pieceToGiveByAI
+          };
+          const modalContent = document.createElement('div');
+          modalContent.id = 'trade-selection-modal';
+          modalContent.className = 'modal-content';
+          modalContent.style.display = 'block';
+          modalContent.innerHTML = `
+            <h2>AI Forces a Trade!</h2>
+            <p style="margin-top:-15px; margin-bottom: 30px; color: var(--text-muted-color);">The AI formed two gems and forces a trade.</p>
+            <div class="trade-container">
+                <div class="trade-player-section">
+                    <p>You Give</p>
+                    <div id="player-trade-options" class="trade-options"></div>
+                </div>
+                <div class="trade-arrows">⇆</div>
+                <div class="trade-player-section">
+                    <p>AI Gives</p>
+                    <div id="ai-trade-options" class="trade-options"></div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button id="trade-ok-btn" style="visibility: hidden;">OK</button>
+            </div>
+        `;
+          this.modalOverlay.appendChild(modalContent);
+          this.modalOverlay.classList.add('visible');
+          const playerTradeContainer = document.getElementById('player-trade-options');
+          const aiTradeContainer = document.getElementById('ai-trade-options');
+          const createTradePieceElement = (piece, hands) => {
+            const el = this.hudElements.player.containers[0].cloneNode(true);
+            el.className = 'trade-piece-item selected';
+            el.style.cursor = 'default';
+            const hand = hands.find(h => h.length > 0 && h[0].equals(piece));
+            this._drawPieceOnCanvas(el.querySelector('.hud-piece-image'), piece);
+            el.querySelector('.hud-piece-count').textContent = hand ? hand.length : '?';
+            el.style.display = 'flex';
+            return el;
+          };
+          const playerPieceEl = createTradePieceElement(trade.give, this.hands.player);
+          const aiPieceEl = createTradePieceElement(trade.take, this.hands.ai);
+          playerTradeContainer.appendChild(playerPieceEl);
+          aiTradeContainer.appendChild(aiPieceEl);
+          setTimeout(() => {
+            this._animateAndFinalizeTrade(trade, playerPieceEl, aiPieceEl, playerTradeContainer, aiTradeContainer, modalContent);
+          }, 100);
+        }
+        _showPlayerTradeSelection() {
+          const modalContent = document.createElement('div');
+          modalContent.id = 'trade-selection-modal';
+          modalContent.className = 'modal-content';
+          modalContent.style.display = 'block';
+          modalContent.innerHTML = `
+            <h2>Double Gem!</h2>
+            <p style="margin-top:-15px; margin-bottom: 30px; color: var(--text-muted-color);">You formed two gems! Force a trade with the AI.</p>
+            <div class="trade-container">
+                <div class="trade-player-section">
+                    <p>Your Hand (Piece to Give)</p>
+                    <div id="player-trade-options" class="trade-options"></div>
+                </div>
+                <div class="trade-arrows">⇆</div>
+                <div class="trade-player-section">
+                    <p>AI's Hand (Piece to Take)</p>
+                    <div id="ai-trade-options" class="trade-options"></div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button id="trade-decline-btn">Skip Trade</button>
+                <button id="trade-confirm-btn" disabled>Confirm Trade</button>
+            </div>
+        `;
+          this.modalOverlay.appendChild(modalContent);
+          this.modalOverlay.classList.add('visible');
+          const confirmBtn = document.getElementById('trade-confirm-btn');
+          const declineBtn = document.getElementById('trade-decline-btn');
+          let trade = {
+            give: null,
+            take: null,
+            giveElement: null,
+            takeElement: null
+          };
+          const createTradeOptions = (containerId, hands, owner) => {
+            const container = document.getElementById(containerId);
+            hands.forEach((hand) => {
+              if (hand.length > 0) {
+                const piece = hand[0];
+                const el = this.hudElements.player.containers[0].cloneNode(true);
+                el.className = 'trade-piece-item';
+                this._drawPieceOnCanvas(el.querySelector('.hud-piece-image'), piece);
+                el.querySelector('.hud-piece-count').textContent = hand.length;
+                el.style.display = 'flex';
+                el.onclick = () => {
+                  Array.from(container.children).forEach(c => c.classList.remove('selected'));
+                  el.classList.add('selected');
+                  if (owner === 'player') {
+                    trade.give = piece;
+                    trade.giveElement = el;
+                  } else {
+                    trade.take = piece;
+                    trade.takeElement = el;
+                  }
+                  confirmBtn.disabled = !(trade.give && trade.take);
+                };
+                container.appendChild(el);
+              }
+            });
+          };
+          createTradeOptions('player-trade-options', this.hands.player, 'player');
+          createTradeOptions('ai-trade-options', this.hands.ai, 'ai');
+          confirmBtn.onclick = () => {
+            this._animateAndFinalizeTrade(trade, trade.giveElement, trade.takeElement,
+              document.getElementById('player-trade-options'),
+              document.getElementById('ai-trade-options'),
+              modalContent);
+          };
+          declineBtn.onclick = () => {
+            modalContent.remove();
             this.modalOverlay.classList.remove('visible');
             this._handleSingleHexagon();
+          };
+        }
+        _animateAndFinalizeTrade(trade, giveEl, takeEl, giveContainer, takeContainer, modalContent) {
+          const giveStartRect = giveEl.getBoundingClientRect();
+          const takeStartRect = takeEl.getBoundingClientRect();
+          document.body.appendChild(giveEl);
+          document.body.appendChild(takeEl);
+          Object.assign(giveEl.style, {
+            position: 'fixed',
+            left: `${giveStartRect.left}px`,
+            top: `${giveStartRect.top}px`,
+            zIndex: '1001',
+            transition: 'all 0.5s ease-in-out'
           });
+          Object.assign(takeEl.style, {
+            position: 'fixed',
+            left: `${takeStartRect.left}px`,
+            top: `${takeStartRect.top}px`,
+            zIndex: '1001',
+            transition: 'all 0.5s ease-in-out'
+          });
+          giveContainer.style.opacity = '0';
+          takeContainer.style.opacity = '0';
+          setTimeout(() => {
+            giveEl.style.left = `${takeStartRect.left}px`;
+            giveEl.style.top = `${takeStartRect.top}px`;
+            takeEl.style.left = `${giveStartRect.left}px`;
+            takeEl.style.top = `${giveStartRect.top}px`;
+          }, 50);
+          setTimeout(() => {
+            giveEl.style.cssText = takeEl.style.cssText = '';
+            giveEl.classList.add('trade-piece-item', 'selected');
+            takeEl.classList.add('trade-piece-item', 'selected');
+            giveContainer.innerHTML = '';
+            takeContainer.innerHTML = '';
+            giveContainer.appendChild(takeEl);
+            takeContainer.appendChild(giveEl);
+            giveContainer.style.opacity = '1';
+            takeContainer.style.opacity = '1';
+            this._performTrade(trade);
+            const playerHandAfter = this.hands.player.find(h => h.length > 0 && h[0].equals(trade.take));
+            const aiHandAfter = this.hands.ai.find(h => h.length > 0 && h[0].equals(trade.give));
+            takeEl.querySelector('.hud-piece-count').textContent = playerHandAfter ? playerHandAfter.length : '1';
+            giveEl.querySelector('.hud-piece-count').textContent = aiHandAfter ? aiHandAfter.length : '1';
+            const closeAndContinue = () => {
+              modalContent.remove();
+              this.modalOverlay.classList.remove('visible');
+              this._handleSingleHexagon();
+            };
+            const okBtn = modalContent.querySelector('#trade-ok-btn');
+            if (okBtn) {
+              okBtn.style.visibility = 'visible';
+              okBtn.onclick = closeAndContinue;
+            } else {
+              closeAndContinue();
+            }
+          }, 600);
         }
         _performGive(piece) {
           const findAndRemove = (hands, pieceToFind) => {
@@ -1208,142 +1379,6 @@
           this._performGive(trade.take);
           this._performTake(trade.give);
         }
-        _showPlayerTradeSelection() {
-          // Create the modal content dynamically
-          const modalContent = document.createElement('div');
-          modalContent.id = 'trade-selection-modal';
-          modalContent.className = 'modal-content';
-          modalContent.style.display = 'block';
-
-          modalContent.innerHTML = `
-        <h2>Double Gem!</h2>
-        <p style="margin-top:-15px; margin-bottom: 30px; color: var(--text-muted-color);">You formed two gems! Force a trade with the AI.</p>
-        <div class="trade-container">
-            <div class="trade-player-section">
-                <p>Your Hand (Piece to Give)</p>
-                <div id="player-trade-options" class="trade-options"></div>
-            </div>
-            <div class="trade-arrows">⇆</div>
-            <div class="trade-player-section">
-                <p>AI's Hand (Piece to Take)</p>
-                <div id="ai-trade-options" class="trade-options"></div>
-            </div>
-        </div>
-        <div class="modal-buttons">
-            <button id="trade-decline-btn">Skip Trade</button>
-            <button id="trade-confirm-btn" disabled>Confirm Trade</button>
-        </div>
-    `;
-
-          this.modalOverlay.appendChild(modalContent);
-          this.modalOverlay.classList.add('visible');
-
-          const confirmBtn = document.getElementById('trade-confirm-btn');
-          const declineBtn = document.getElementById('trade-decline-btn');
-          let trade = {
-            give: null,
-            take: null,
-            giveElement: null,
-            takeElement: null
-          };
-
-          const createTradeOptions = (containerId, hands, owner) => {
-            const container = document.getElementById(containerId);
-            hands.forEach((hand) => {
-              if (hand.length > 0) {
-                const piece = hand[0];
-                // Use a clone of the HUD piece container for consistent styling
-                const el = this.hudElements.player.containers[0].cloneNode(true);
-                el.className = 'trade-piece-item'; // Use the new specific class
-                this._drawPieceOnCanvas(el.querySelector('.hud-piece-image'), piece);
-                el.querySelector('.hud-piece-count').textContent = hand.length;
-                el.style.display = 'flex';
-
-                el.onclick = () => {
-                  // Deselect others in the same group
-                  Array.from(container.children).forEach(c => c.classList.remove('selected'));
-                  el.classList.add('selected');
-                  if (owner === 'player') {
-                    trade.give = piece;
-                    trade.giveElement = el;
-                  } else {
-                    trade.take = piece;
-                    trade.takeElement = el;
-                  }
-                  confirmBtn.disabled = !(trade.give && trade.take);
-                };
-                container.appendChild(el);
-              }
-            });
-          };
-
-          createTradeOptions('player-trade-options', this.hands.player, 'player');
-          createTradeOptions('ai-trade-options', this.hands.ai, 'ai');
-
-          const closeAndContinue = () => {
-            modalContent.remove(); // Clean up the dynamically created modal
-            this.modalOverlay.classList.remove('visible');
-            this._handleSingleHexagon(); // Player gets another turn after the trade/skip
-            this.userInput.enable();
-          };
-
-          confirmBtn.onclick = () => {
-            // --- ANIMATION LOGIC ---
-            const playerOptionsContainer = document.getElementById('player-trade-options');
-            const aiOptionsContainer = document.getElementById('ai-trade-options');
-
-            const playerStartRect = trade.giveElement.getBoundingClientRect();
-            const aiStartRect = trade.takeElement.getBoundingClientRect();
-
-            // Temporarily move the original elements to body for absolute positioning
-            document.body.appendChild(trade.giveElement);
-            document.body.appendChild(trade.takeElement);
-
-            Object.assign(trade.giveElement.style, {
-              position: 'fixed',
-              left: `${playerStartRect.left}px`,
-              top: `${playerStartRect.top}px`,
-              zIndex: '1001',
-              transition: 'all 0.5s ease-in-out'
-            });
-            Object.assign(trade.takeElement.style, {
-              position: 'fixed',
-              left: `${aiStartRect.left}px`,
-              top: `${aiStartRect.top}px`,
-              zIndex: '1001',
-              transition: 'all 0.5s ease-in-out'
-            });
-
-            // Hide the modal content but keep the overlay
-            modalContent.style.opacity = '0';
-
-            // Animate the pieces swapping positions
-            setTimeout(() => {
-              trade.giveElement.style.left = `${aiStartRect.left}px`;
-              trade.giveElement.style.top = `${aiStartRect.top}px`;
-              trade.takeElement.style.left = `${playerStartRect.left}px`;
-              trade.takeElement.style.top = `${playerStartRect.top}px`;
-            }, 50);
-
-            // After animation, perform the trade and close
-            setTimeout(() => {
-              // *** THE FIX IS HERE ***
-              // First, remove the animated elements from the body
-              trade.giveElement.remove();
-              trade.takeElement.remove();
-
-              // Then, perform the game logic
-              this._performTrade(trade);
-
-              // Finally, close the modal and continue the game
-              closeAndContinue();
-            }, 600); // The timeout should be slightly longer than the transition duration
-          };
-
-          declineBtn.onclick = () => {
-            closeAndContinue();
-          };
-        }
         _switchTurn() {
           if (this.isGameOver) return;
           this.currentPlayer = this.currentPlayer === 'player' ? 'ai' : 'player';
@@ -1360,35 +1395,25 @@
           else if (this.diff == "normal") bonus = 3000;
           else if (this.diff == "hard") bonus = 4000;
           else if (this.diff == "insane") bonus = 5000;
-
           if (this.isGameOver) return;
           this.isGameOver = true;
-
-          // Check if the player is the winner to trigger confetti
           const playerWon = winnerText.startsWith('You');
-
           if (playerWon) {
             this.score += bonus;
             this.score += this.hands.ai.flat().length * 100;
             triggerVictoryConfetti();
           }
-
           if (this.score > this.highScore) {
             this.highScore = this.score;
             localStorage.setItem('trideccoHighScore', this.highScore);
           }
-
           this._updateScoreDisplay();
-
           this.gameOverText.textContent = winnerText;
           this.finalScoreText.textContent = this.score;
-
-          // Show the modal after a short delay to let the initial burst of confetti be seen
           setTimeout(() => {
             this.gameOverModal.style.display = 'block';
             this.modalOverlay.classList.add('visible');
           }, 800);
-
           this.playAgainBtn.onclick = () => window.location.reload();
           this.userInput.disable();
         }
